@@ -9,7 +9,15 @@ interface Props {
   paymentPlans: PaymentPlan[]
 }
 
-export function IrrCalculator({ project, paymentPlans }: Props) {
+// Default plans when project has none
+const DEFAULT_PLANS: PaymentPlan[] = [
+  { id: 'default-60-40', project_id: '', name: '60/40 Standard', description: null, down_payment_pct: 20, construction_pct: 40, handover_pct: 40, post_handover_pct: 0, post_handover_months: 0, monthly_pct: 0, is_active: true },
+  { id: 'default-80-20', project_id: '', name: '80/20 Plan', description: null, down_payment_pct: 20, construction_pct: 60, handover_pct: 20, post_handover_pct: 0, post_handover_months: 0, monthly_pct: 0, is_active: true },
+  { id: 'default-post', project_id: '', name: 'Post-Handover 30/70', description: null, down_payment_pct: 10, construction_pct: 20, handover_pct: 0, post_handover_pct: 70, post_handover_months: 36, monthly_pct: 0, is_active: true },
+]
+
+export function IrrCalculator({ project, paymentPlans: rawPlans }: Props) {
+  const paymentPlans = rawPlans.length > 0 ? rawPlans : DEFAULT_PLANS
   const defaultPrice = project.min_price ?? 1_500_000
   const defaultPsf = project.current_psf ?? 2000
 
