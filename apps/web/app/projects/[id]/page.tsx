@@ -21,6 +21,7 @@ import { DeveloperCard } from '@/components/project/DeveloperCard'
 import { ScoreBadge } from '@/components/project/ScoreBadge'
 import { WatchlistButton } from '@/components/project/WatchlistButton'
 import { PaywallBanner } from '@/components/ui/PaywallBanner'
+import { InvestmentAnalysis } from '@/components/project/InvestmentAnalysis'
 
 interface Props {
   params: { id: string }
@@ -79,6 +80,13 @@ export default async function ProjectDetailPage({ params }: Props) {
     .single()
 
   const isWatchlisted = !!watchlistEntry
+
+  // Fetch comparable projects for analysis
+  const { data: allProjects } = await supabase
+    .from('projects')
+    .select('id, name, slug, area, score, current_psf, sellthrough_pct, handover_status, developer:developer_id(name)')
+    .in('status', ['active', 'pre_launch'])
+    .order('score', { ascending: false })
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -156,6 +164,9 @@ export default async function ProjectDetailPage({ params }: Props) {
             </div>
           ))}
         </div>
+
+        {/* AI Investment Analysis */}
+        <InvestmentAnalysis project={p} allProjects={allProjects ?? []} />
 
         {/* PSF chart */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">

@@ -17,6 +17,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { ProjectTable } from '@/components/project/ProjectTable'
 import { MarketMetrics } from '@/components/project/MarketMetrics'
+import { MarketInsights } from '@/components/project/MarketInsights'
 import { FilterBar } from '@/components/project/FilterBar'
 import { redirect } from 'next/navigation'
 
@@ -127,6 +128,8 @@ export default async function DashboardPage({
         </div>
 
         <MarketMetrics data={marketData} />
+
+        <MarketInsights projects={projects ?? []} />
 
         <FilterBar currentFilters={searchParams} />
 
