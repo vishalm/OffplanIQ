@@ -182,7 +182,7 @@ export default async function ProjectDetailPage({ params }: Props) {
         ) : (
           <PaywallBanner
             title="Developer scorecard"
-            description="On-time delivery rate, RERA complaints, historical ROI — all scored."
+            description="On-time delivery rate, RERA complaints, historical ROI. All scored."
           />
         )}
 

@@ -124,7 +124,7 @@ export function IrrCalculator({ project, paymentPlans }: Props) {
       {sensitivityRows.length > 0 && (
         <div>
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
-            Sensitivity — IRR at different exit PSF levels
+            Sensitivity: IRR at different exit PSF levels
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

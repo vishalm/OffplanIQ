@@ -5,12 +5,12 @@ export function DeveloperCard({ developer }: { developer: Developer | null | und
   if (!developer) return null
 
   const metrics = [
-    { label: 'On-time delivery', value: developer.on_time_delivery_pct != null ? `${developer.on_time_delivery_pct}%` : '—', good: (developer.on_time_delivery_pct ?? 0) >= 80 },
+    { label: 'On-time delivery', value: developer.on_time_delivery_pct != null ? `${developer.on_time_delivery_pct}%` : '-', good: (developer.on_time_delivery_pct ?? 0) >= 80 },
     { label: 'RERA complaints',  value: developer.rera_complaints_count.toString(), good: developer.rera_complaints_count <= 5 },
     { label: 'RERA violations',  value: developer.rera_violations_count.toString(), good: developer.rera_violations_count === 0 },
-    { label: 'Avg ROI (historical)', value: developer.avg_roi_pct != null ? `+${developer.avg_roi_pct}%` : '—', good: (developer.avg_roi_pct ?? 0) >= 15 },
+    { label: 'Avg ROI (historical)', value: developer.avg_roi_pct != null ? `+${developer.avg_roi_pct}%` : '-', good: (developer.avg_roi_pct ?? 0) >= 15 },
     { label: 'Active projects',  value: developer.active_projects.toString(), good: true },
-    { label: 'Developer score',  value: developer.developer_score != null ? `${developer.developer_score}/100` : '—', good: (developer.developer_score ?? 0) >= 70 },
+    { label: 'Developer score',  value: developer.developer_score != null ? `${developer.developer_score}/100` : '-', good: (developer.developer_score ?? 0) >= 70 },
   ]
 
   return (

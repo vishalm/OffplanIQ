@@ -26,7 +26,7 @@ export function formatPct(pct: number, decimals = 1): string {
 
 /** Format a date string to UAE locale: "2026-12-01" → "Dec 2026" */
 export function formatHandoverDate(isoDate: string | null): string {
-  if (!isoDate) return '—'
+  if (!isoDate) return '-'
   return new Date(isoDate).toLocaleDateString('en-AE', {
     month: 'short', year: 'numeric', timeZone: 'Asia/Dubai',
   })

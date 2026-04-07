@@ -6,7 +6,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'OffplanIQ — Dubai Off-Plan Intelligence',
+  title: 'OffplanIQ | Dubai Off-Plan Intelligence',
   description: 'Track 142+ Dubai off-plan projects. Live PSF data, sell-through velocity, IRR calculator, developer scorecards.',
   openGraph: {
     title: 'OffplanIQ',

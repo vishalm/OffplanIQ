@@ -94,7 +94,7 @@ export function ProjectTable({ projects, tier, sort, currentFilters }: Props) {
 
             {/* PSF */}
             <span className="text-sm font-medium text-gray-900">
-              {project.current_psf ? `AED ${project.current_psf.toLocaleString()}` : '—'}
+              {project.current_psf ? `AED ${project.current_psf.toLocaleString()}` : '-'}
             </span>
 
             {/* 6m delta */}
@@ -102,7 +102,7 @@ export function ProjectTable({ projects, tier, sort, currentFilters }: Props) {
               psfDelta === null ? 'text-gray-400' :
               psfDelta > 0 ? 'text-green-600' : 'text-red-500'
             }`}>
-              {psfDelta === null ? '—' : `${psfDelta > 0 ? '+' : ''}${psfDelta}%`}
+              {psfDelta === null ? '-' : `${psfDelta > 0 ? '+' : ''}${psfDelta}%`}
             </span>
 
             {/* Sell-through */}
@@ -120,7 +120,7 @@ export function ProjectTable({ projects, tier, sort, currentFilters }: Props) {
             <span className="text-xs text-gray-500">
               {project.current_handover_date
                 ? new Date(project.current_handover_date).toLocaleDateString('en-AE', { month: 'short', year: '2-digit' })
-                : '—'}
+                : '-'}
               {project.handover_delay_days > 0 && (
                 <span className="block text-red-400">+{Math.round(project.handover_delay_days / 30)}mo delay</span>
               )}

@@ -15,7 +15,7 @@ const features = [
   },
   {
     title: 'Developer scorecards',
-    desc: 'On-time delivery rate, RERA complaints, historical ROI — every developer scored 0–100.',
+    desc: 'On-time delivery rate, RERA complaints, historical ROI. Every developer scored 0 to 100.',
   },
   {
     title: 'Sell-through velocity',
@@ -35,7 +35,7 @@ const stats = [
   { value: '142+', label: 'Active projects tracked' },
   { value: 'AED 498B', label: 'Transactions covered (9m 2025)' },
   { value: 'T+1', label: 'DLD data freshness' },
-  { value: '0–100', label: 'Transparent project scoring' },
+  { value: '0 to 100', label: 'Transparent project scoring' },
 ]
 
 export default function LandingPage() {
@@ -74,7 +74,7 @@ export default function LandingPage() {
             href="/auth/register"
             className="bg-gray-900 text-white px-8 py-3 rounded-xl text-sm font-medium hover:bg-gray-700 transition"
           >
-            Start free — no card needed
+            Start free, no card needed
           </Link>
           <Link href="/auth/login" className="text-sm text-gray-500 hover:text-gray-900">
             Sign in →

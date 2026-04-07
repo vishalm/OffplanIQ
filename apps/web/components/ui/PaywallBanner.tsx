@@ -21,7 +21,7 @@ export function PaywallBanner({
         href="/settings/billing"
         className="inline-block bg-gray-900 text-white text-sm px-5 py-2 rounded-lg hover:bg-gray-700 transition"
       >
-        Upgrade to Investor — AED 750/mo
+        Upgrade to Investor · AED 750/mo
       </Link>
     </div>
   )
