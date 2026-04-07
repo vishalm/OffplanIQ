@@ -18,11 +18,20 @@ const DEFAULT_PLANS: PaymentPlan[] = [
 
 export function IrrCalculator({ project, paymentPlans: rawPlans }: Props) {
   const paymentPlans = rawPlans.length > 0 ? rawPlans : DEFAULT_PLANS
-  const defaultPrice = project.min_price ?? 1_500_000
-  const defaultPsf = project.current_psf ?? 2000
+  const currentPsf = project.current_psf ?? 2000
+
+  // Dynamic boundaries based on project data
+  const priceMin = Math.max(100000, Math.round((project.min_price ?? 500000) * 0.5 / 50000) * 50000)
+  const priceMax = Math.round(Math.max((project.max_price ?? 5000000) * 1.5, (project.min_price ?? 1500000) * 3) / 100000) * 100000
+  const priceStep = priceMax <= 2000000 ? 25000 : priceMax <= 10000000 ? 50000 : 100000
+  const defaultPrice = project.min_price ?? Math.round((priceMin + priceMax) / 2 / priceStep) * priceStep
+
+  const psfMin = Math.max(500, Math.round(currentPsf * 0.5 / 50) * 50)
+  const psfMax = Math.round(currentPsf * 2 / 50) * 50
+  const psfStep = psfMax <= 3000 ? 25 : 50
 
   const [unitPrice, setUnitPrice] = useState(defaultPrice)
-  const [exitPsf, setExitPsf] = useState(Math.round(defaultPsf * 1.15))
+  const [exitPsf, setExitPsf] = useState(Math.round(currentPsf * 1.15 / psfStep) * psfStep)
   const [holdYears, setHoldYears] = useState(3)
   const [selectedPlanId, setSelectedPlanId] = useState(paymentPlans[0]?.id ?? '')
 
@@ -73,11 +82,13 @@ export function IrrCalculator({ project, paymentPlans: rawPlans }: Props) {
               <label className="text-xs font-medium text-gray-600">What you'd pay for a unit</label>
               <span className="text-sm font-bold text-gray-900 tabular-nums">{formatAed(unitPrice)}</span>
             </div>
-            <input type="range" min={500000} max={5000000} step={50000} value={unitPrice}
+            <input type="range" min={priceMin} max={priceMax} step={priceStep} value={unitPrice}
               onChange={e => setUnitPrice(Number(e.target.value))}
               className="w-full h-1.5 rounded-full appearance-none bg-gray-200 accent-blue-600 cursor-pointer" />
             <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
-              <span>AED 500K</span><span>AED 5M</span>
+              <span>{formatAed(priceMin)}</span>
+              {project.min_price && <span className="text-blue-500 font-medium">From {formatAed(project.min_price)}</span>}
+              <span>{formatAed(priceMax)}</span>
             </div>
           </div>
 
@@ -86,13 +97,13 @@ export function IrrCalculator({ project, paymentPlans: rawPlans }: Props) {
               <label className="text-xs font-medium text-gray-600">What you think PSF will be when you sell</label>
               <span className="text-sm font-bold text-gray-900 tabular-nums">AED {exitPsf.toLocaleString()}/sqft</span>
             </div>
-            <input type="range" min={1000} max={5000} step={50} value={exitPsf}
+            <input type="range" min={psfMin} max={psfMax} step={psfStep} value={exitPsf}
               onChange={e => setExitPsf(Number(e.target.value))}
               className="w-full h-1.5 rounded-full appearance-none bg-gray-200 accent-blue-600 cursor-pointer" />
             <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
-              <span>AED 1,000</span>
-              <span className="text-blue-500 font-medium">Current: AED {(project.current_psf ?? 0).toLocaleString()}</span>
-              <span>AED 5,000</span>
+              <span>AED {psfMin.toLocaleString()}</span>
+              <span className="text-blue-500 font-medium">Current: AED {currentPsf.toLocaleString()}</span>
+              <span>AED {psfMax.toLocaleString()}</span>
             </div>
           </div>
 
