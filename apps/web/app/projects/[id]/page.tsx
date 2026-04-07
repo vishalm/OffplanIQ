@@ -197,6 +197,45 @@ export default async function ProjectDetailPage({ params }: Props) {
           />
         )}
 
+        {/* Data sources citation */}
+        <div className="mt-8 border-t border-gray-200 pt-5">
+          <p className="text-xs font-medium text-gray-500 mb-2">Data Sources</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-gray-700">Property Finder</p>
+                <p className="text-xs text-gray-400">Listing prices, unit types, project details. Scraped live.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 mt-1.5 shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-gray-700">Dubai Land Department</p>
+                <p className="text-xs text-gray-400">Transaction records, PSF history, registration data.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-1.5 shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-gray-700">Developer Filings</p>
+                <p className="text-xs text-gray-400">Payment plans, handover dates, unit counts, brochures.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-gray-700">RERA</p>
+                <p className="text-xs text-gray-400">Developer complaints, violations, registration status.</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-3">
+            Scores and analysis are algorithmic and do not constitute financial advice.
+            Last updated: {new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' })}.
+          </p>
+        </div>
+
       </div>
     </div>
   )
