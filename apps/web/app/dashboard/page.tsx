@@ -52,7 +52,22 @@ export default async function DashboardPage({
       developer:developer_id(name, slug, developer_score)
     `)
     .in('status', ['active', 'pre_launch'])
-    .order('score', { ascending: false })
+
+  // Apply sort from URL params
+  const sortParam = searchParams.sort ?? 'score'
+  const sortMap: Record<string, { column: string; ascending: boolean }> = {
+    score:       { column: 'score', ascending: false },
+    psf:         { column: 'current_psf', ascending: false },
+    psf_asc:     { column: 'current_psf', ascending: true },
+    sellthrough: { column: 'sellthrough_pct', ascending: false },
+    sellthrough_asc: { column: 'sellthrough_pct', ascending: true },
+    name:        { column: 'name', ascending: true },
+    area:        { column: 'area', ascending: true },
+    handover:    { column: 'current_handover_date', ascending: true },
+    score_asc:   { column: 'score', ascending: true },
+  }
+  const sortConfig = sortMap[sortParam] ?? sortMap.score
+  query = query.order(sortConfig.column, { ascending: sortConfig.ascending })
 
   // Apply filters from searchParams
   if (searchParams.area) {
@@ -108,6 +123,7 @@ export default async function DashboardPage({
           projects={projects ?? []}
           tier={tier}
           sort={searchParams.sort}
+          currentFilters={searchParams}
         />
 
         {isFree && (

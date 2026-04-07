@@ -1,5 +1,5 @@
 // apps/web/components/project/ProjectTable.tsx
-// The main sortable project table on the dashboard
+// Sortable project table — sort via URL params (Server Component, no JS)
 
 import Link from 'next/link'
 import type { Project, SubscriptionTier } from '@offplaniq/shared'
@@ -9,9 +9,40 @@ interface Props {
   projects: (Project & { developer?: { name: string; slug: string } })[]
   tier: SubscriptionTier
   sort?: string
+  currentFilters?: Record<string, string | undefined>
 }
 
-export function ProjectTable({ projects, tier, sort }: Props) {
+const columns = [
+  { key: 'name', label: 'Project', sortAsc: 'name', sortDesc: 'name' },
+  { key: 'psf', label: 'PSF', sortAsc: 'psf_asc', sortDesc: 'psf' },
+  { key: 'delta', label: '6m Delta', sortAsc: 'psf_asc', sortDesc: 'psf' },
+  { key: 'sellthrough', label: 'Sell-thru', sortAsc: 'sellthrough_asc', sortDesc: 'sellthrough' },
+  { key: 'handover', label: 'Handover', sortAsc: 'handover', sortDesc: 'handover' },
+  { key: 'score', label: 'Score', sortAsc: 'score_asc', sortDesc: 'score' },
+] as const
+
+function buildSortUrl(col: typeof columns[number], currentSort?: string, filters?: Record<string, string | undefined>) {
+  // Toggle: if already sorted desc on this col, flip to asc. Otherwise default to desc.
+  const isCurrentDesc = currentSort === col.sortDesc
+  const nextSort = isCurrentDesc ? col.sortAsc : col.sortDesc
+
+  const params = new URLSearchParams()
+  if (filters) {
+    for (const [k, v] of Object.entries(filters)) {
+      if (v && k !== 'sort') params.set(k, v)
+    }
+  }
+  params.set('sort', nextSort)
+  return `/dashboard?${params.toString()}`
+}
+
+function SortArrow({ col, currentSort }: { col: typeof columns[number]; currentSort?: string }) {
+  if (currentSort === col.sortDesc) return <span className="ml-1 text-gray-900">↓</span>
+  if (currentSort === col.sortAsc) return <span className="ml-1 text-gray-900">↑</span>
+  return <span className="ml-1 text-gray-300">↕</span>
+}
+
+export function ProjectTable({ projects, tier, sort, currentFilters }: Props) {
   const isFree = tier === 'free'
 
   if (!projects.length) {
@@ -24,12 +55,17 @@ export function ProjectTable({ projects, tier, sort }: Props) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      {/* Header */}
+      {/* Header — clickable for sorting */}
       <div className="grid grid-cols-[2fr_100px_100px_110px_100px_80px] gap-3 px-4 py-3 border-b border-gray-100">
-        {['Project', 'PSF', '6m delta', 'Sell-thru', 'Handover', 'Score'].map(col => (
-          <span key={col} className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-            {col}
-          </span>
+        {columns.map(col => (
+          <Link
+            key={col.key}
+            href={buildSortUrl(col, sort, currentFilters)}
+            className="text-xs font-medium text-gray-400 uppercase tracking-wide hover:text-gray-700 transition flex items-center"
+          >
+            {col.label}
+            <SortArrow col={col} currentSort={sort} />
+          </Link>
         ))}
       </div>
 
@@ -39,7 +75,7 @@ export function ProjectTable({ projects, tier, sort }: Props) {
           ? Math.round(((project.current_psf - project.launch_psf) / project.launch_psf) * 100)
           : null
 
-        const isBlurred = isFree && i >= 10 // blur rows 10-19 on free tier
+        const isBlurred = isFree && i >= 10
 
         return (
           <Link
@@ -75,7 +111,7 @@ export function ProjectTable({ projects, tier, sort }: Props) {
               <div className="mt-1 h-1 bg-gray-100 rounded-full w-16">
                 <div
                   className="h-1 rounded-full bg-gray-400"
-                  style={{ width: `${project.sellthrough_pct}%` }}
+                  style={{ width: `${Math.min(project.sellthrough_pct, 100)}%` }}
                 />
               </div>
             </div>

@@ -40,8 +40,8 @@ export default async function ProjectDetailPage({ params }: Props) {
 
   const isPaid = (profile as any)?.subscription_tier !== 'free'
 
-  // Fetch project — try slug first, then id
-  const { data: project } = await supabase
+  // Fetch project by slug
+  let { data: project } = await supabase
     .from('projects')
     .select(`
       *,
@@ -49,8 +49,23 @@ export default async function ProjectDetailPage({ params }: Props) {
       payment_plans(*),
       psf_history(recorded_date, psf, source)
     `)
-    .or(`slug.eq.${params.id},id.eq.${params.id}`)
+    .eq('slug', params.id)
     .single()
+
+  // Fallback: try by UUID if slug didn't match
+  if (!project) {
+    const { data: byId } = await supabase
+      .from('projects')
+      .select(`
+        *,
+        developer:developer_id(*),
+        payment_plans(*),
+        psf_history(recorded_date, psf, source)
+      `)
+      .eq('id', params.id)
+      .single()
+    project = byId
+  }
 
   const p = project as any
   if (!p) notFound()
