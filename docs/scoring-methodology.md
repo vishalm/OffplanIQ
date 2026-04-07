@@ -34,13 +34,13 @@ The score is computed after every scraper run by the `score-recalculator` Edge F
 ```mermaid
 graph LR
     subgraph Thresholds
-        A["≥90%"] -->|"40 pts"| R["Near sellout"]
-        B["≥75%"] -->|"36 pts"| S["Strong demand"]
-        C["≥60%"] -->|"30 pts"| T["Healthy"]
-        D["≥45%"] -->|"24 pts"| U["Average"]
-        E["≥30%"] -->|"16 pts"| V["Slow"]
-        F["≥15%"] -->|"10 pts"| W["Concerning"]
-        G["<15%"] -->|"scaled"| X["floor(pct/15 × 10)"]
+        A["gte 90%"] -->|"40 pts"| R["Near sellout"]
+        B["gte 75%"] -->|"36 pts"| S["Strong demand"]
+        C["gte 60%"] -->|"30 pts"| T["Healthy"]
+        D["gte 45%"] -->|"24 pts"| U["Average"]
+        E["gte 30%"] -->|"16 pts"| V["Slow"]
+        F["gte 15%"] -->|"10 pts"| W["Concerning"]
+        G["under 15%"] -->|"scaled"| X["floor pct/15 x 10"]
     end
 ```
 
@@ -59,9 +59,9 @@ graph LR
 ```mermaid
 graph LR
     subgraph Calculation
-        A["Get PSF from<br/>6 months ago"] --> C["Compute delta %"]
+        A["Get PSF from\n6 months ago"] --> C["Compute delta %"]
         B["Get latest PSF"] --> C
-        C --> D{Map to points}
+        C --> D{"Map to points"}
     end
 ```
 
@@ -143,7 +143,13 @@ graph LR
 
 ```mermaid
 graph LR
-    A["85-100<br/>🟢 Excellent"] --- B["70-84<br/>🟢 Good"] --- C["55-69<br/>🟡 Watch"] --- D["40-54<br/>🟠 Caution"] --- E["0-39<br/>🔴 Avoid"]
+    A["85-100\nExcellent"]:::excellent --> B["70-84\nGood"]:::good --> C["55-69\nWatch"]:::watch --> D["40-54\nCaution"]:::caution --> E["0-39\nAvoid"]:::avoid
+
+    classDef excellent fill:#15803d,stroke:#166534,color:#fff
+    classDef good fill:#16a34a,stroke:#15803d,color:#fff
+    classDef watch fill:#ca8a04,stroke:#a16207,color:#fff
+    classDef caution fill:#ea580c,stroke:#c2410c,color:#fff
+    classDef avoid fill:#dc2626,stroke:#991b1b,color:#fff
 ```
 
 | Label | Range | UI Color | Meaning |
@@ -168,8 +174,8 @@ sequenceDiagram
 
     S->>DB: Upsert new DLD transactions
     S->>PSF: POST /functions/v1/psf-updater
-    PSF->>DB: Compute weighted avg PSF<br/>from last 30 days of DLD data
-    PSF->>DB: Update projects.current_psf<br/>+ upsert psf_history
+    PSF->>DB: Compute weighted avg PSF<br/>from last 30d of DLD data
+    PSF->>DB: Update projects.current_psf<br/>and upsert psf_history
 
     Note over S: 5 second pause
 

@@ -77,42 +77,44 @@ cd apps/scraper && pytest     # 71 Python tests
 
 ```mermaid
 flowchart TB
-    subgraph Sources["🌐 Data Sources"]
-        DLD["Dubai Land Dept\n(dubailand.gov.ae)"]
+    subgraph Sources["Data Sources"]
+        DLD["Dubai Land Dept\ndubailand.gov.ae"]
         PF["Property Finder"]
-        BAYUT["Bayut\n(planned)"]
+        BAYUT["Bayut\nplanned"]
     end
 
-    subgraph Pipeline["⚙️ Data Pipeline — Railway"]
+    subgraph Pipeline["Data Pipeline - Railway"]
         direction LR
         DLD_S["dld.py\nPlaywright"]
         PF_S["property_finder.py\nPlaywright"]
         MATCH["match_transactions.py\nFuzzy Matcher"]
     end
 
-    subgraph Supabase["🗄️ Supabase Cloud"]
-        DB[(PostgreSQL\n11 tables · RLS)]
+    subgraph Supabase["Supabase Cloud"]
+        DB[(PostgreSQL\n11 tables - RLS)]
         AUTH["Auth\nemail/password"]
-        EF["Edge Functions ×4"]
+        EF["Edge Functions x4"]
     end
 
-    subgraph App["🖥️ Next.js 14 — Vercel"]
+    subgraph App["Next.js 14 - Vercel"]
         DASH["Dashboard\nProject Feed"]
         DETAIL["Project Detail\nIRR Calculator"]
         ALERTS["Alerts\nWatchlist"]
         BILLING["Billing\nStripe Integration"]
     end
 
-    subgraph Ext["📦 External Services"]
+    subgraph Ext["External Services"]
         STRIPE["Stripe\nSubscriptions"]
         RESEND["Resend\nEmail API"]
     end
 
     DLD --> DLD_S
     PF --> PF_S
-    DLD_S & PF_S --> DB
+    DLD_S --> DB
+    PF_S --> DB
     MATCH --> DB
-    EF --> DB & RESEND
+    EF --> DB
+    EF --> RESEND
     DB --> App
     AUTH --> App
     BILLING <--> STRIPE
@@ -122,7 +124,7 @@ flowchart TB
 
 ```mermaid
 sequenceDiagram
-    participant R as Railway Cron<br/>(02:00 UTC)
+    participant R as Railway Cron (02:00 UTC)
     participant S as Scrapers
     participant DB as Supabase
     participant EF as Edge Functions
@@ -192,13 +194,13 @@ The key paid feature. An investor managing a AED 1.5M purchase will pay AED 750/
 
 ```mermaid
 graph LR
-    A["Unit Price<br/>AED 1.5M"] --> C["IRR Engine"]
-    B["Exit PSF<br/>AED 2,500/sqft"] --> C
-    D["Hold Years<br/>3 years"] --> C
-    E["Payment Plan<br/>20/40/40"] --> C
-    C --> F["Estimated IRR<br/>+24.3%"]
-    C --> G["Net Gain<br/>AED 375K"]
-    C --> H["Sensitivity<br/>Table ×8"]
+    A["Unit Price\nAED 1.5M"] --> C["IRR Engine"]
+    B["Exit PSF\nAED 2,500/sqft"] --> C
+    D["Hold Years\n3 years"] --> C
+    E["Payment Plan\n20/40/40"] --> C
+    C --> F["Estimated IRR\n+24.3%"]
+    C --> G["Net Gain\nAED 375K"]
+    C --> H["Sensitivity\nTable x8"]
 ```
 
 **Key insight:** Lower down payment = less cash at risk = higher IRR on the same property. This is why comparing payment plans is the killer feature.
@@ -271,8 +273,8 @@ See [docs/data-model.md](docs/data-model.md) for the complete schema reference.
 
 ```mermaid
 graph LR
-    F["🆓 Free<br/>AED 0/mo"]:::free --> I["⭐ Investor<br/>AED 750/mo"]:::inv
-    I --> A["🏢 Agency<br/>AED 3,500/mo"]:::agency
+    F["Free\nAED 0/mo"]:::free --> I["Investor\nAED 750/mo"]:::inv
+    I --> A["Agency\nAED 3,500/mo"]:::agency
 
     classDef free fill:#1e293b,stroke:#475569,color:#94a3b8
     classDef inv fill:#1e1b4b,stroke:#6366f1,color:#a5b4fc

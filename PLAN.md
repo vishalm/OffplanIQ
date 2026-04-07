@@ -50,22 +50,26 @@ OffplanIQ is a Dubai off-plan property intelligence SaaS that gives investors an
 
 ```mermaid
 graph LR
-    A[🔴 Critical] --> A1[DLD scraper selectors are placeholders]
-    A --> A2[PF scraper selectors are placeholders]
-    A --> A3[Score algo duplicated in Edge Function]
-    A --> A4[No tests anywhere]
-    A --> A5[No ESLint/Prettier config]
-    
-    B[🟡 Important] --> B1[Digest sender uses raw HTML not React Email template]
-    B --> B2[WatchlistButton bypasses API route]
-    B --> B3[algorithm.ts has broken import path]
-    B --> B4[API v1 routes not created yet]
-    B --> B5[api_keys table migration missing]
-    
-    C[🟢 Nice to Have] --> C1[Bayut scraper TODO]
-    C --> C2[Google OAuth]
-    C --> C3[Mobile app]
-    C --> C4[Saudi expansion]
+    A["Critical"]:::red --> A1["DLD scraper selectors are placeholders"]
+    A --> A2["PF scraper selectors are placeholders"]
+    A --> A3["Score algo duplicated in Edge Function"]
+    A --> A4["No tests anywhere"]
+    A --> A5["No ESLint/Prettier config"]
+
+    B["Important"]:::yellow --> B1["Digest sender uses raw HTML not React Email template"]
+    B --> B2["WatchlistButton bypasses API route"]
+    B --> B3["algorithm.ts has broken import path"]
+    B --> B4["API v1 routes not created yet"]
+    B --> B5["api_keys table migration missing"]
+
+    C["Nice to Have"]:::green --> C1["Bayut scraper TODO"]
+    C --> C2["Google OAuth"]
+    C --> C3["Mobile app"]
+    C --> C4["Saudi expansion"]
+
+    classDef red fill:#dc2626,stroke:#991b1b,color:#fff
+    classDef yellow fill:#d97706,stroke:#92400e,color:#fff
+    classDef green fill:#16a34a,stroke:#166534,color:#fff
 ```
 
 ---
@@ -311,24 +315,30 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph Score["Project Score (0-100)"]
-        ST["Sell-through\n(0-40 pts)\nWeight: 40%"]
-        PSF["PSF 6m Delta\n(0-30 pts)\nWeight: 30%"]
-        DEV["Developer Score\n(0-20 pts)\nWeight: 20%"]
-        HO["Handover Status\n(0-10 pts)\nWeight: 10%"]
+    subgraph Score["Project Score 0-100"]
+        ST["Sell-through\n0-40 pts\nWeight: 40%"]
+        PSF["PSF 6m Delta\n0-30 pts\nWeight: 30%"]
+        DEV["Developer Score\n0-20 pts\nWeight: 20%"]
+        HO["Handover Status\n0-10 pts\nWeight: 10%"]
     end
-    
-    ST --> |"≥90%: 40 | ≥75%: 36 | ≥60%: 30\n≥45%: 24 | ≥30%: 16 | ≥15%: 10"| TOTAL
-    PSF --> |"≥+20%: 30 | ≥+10%: 24\n≥+5%: 18 | ≥0%: 12 | <-7%: 0"| TOTAL
-    DEV --> |"developer_score / 100 × 20\nunknown = 10 (neutral)"| TOTAL
-    HO --> |"on_track: 10 | at_risk: 6\ndelayed ≤90d: 4 | >180d: 0"| TOTAL
+
+    ST -->|"Thresholds: 90%=40,\n75%=36, 60%=30,\n45%=24, 30%=16, 15%=10"| TOTAL
+    PSF -->|"Thresholds: +20%=30,\n+10%=24, +5%=18,\n0%=12, neg 7%=0"| TOTAL
+    DEV -->|"developer_score / 100 x 20\nunknown = 10 neutral"| TOTAL
+    HO -->|"on_track=10, at_risk=6,\ndelayed 90d=4, 180d+=0"| TOTAL
 
     TOTAL["TOTAL SCORE"]
-    TOTAL --> E["85-100: Excellent 🟢"]
-    TOTAL --> G["70-84: Good 🟢"]
-    TOTAL --> W["55-69: Watch 🟡"]
-    TOTAL --> C["40-54: Caution 🟠"]
-    TOTAL --> AV["0-39: Avoid 🔴"]
+    TOTAL --> E["85-100: Excellent"]:::excellent
+    TOTAL --> G["70-84: Good"]:::good
+    TOTAL --> W["55-69: Watch"]:::watch
+    TOTAL --> CA["40-54: Caution"]:::caution
+    TOTAL --> AV["0-39: Avoid"]:::avoid
+
+    classDef excellent fill:#15803d,stroke:#166534,color:#fff
+    classDef good fill:#16a34a,stroke:#15803d,color:#fff
+    classDef watch fill:#ca8a04,stroke:#a16207,color:#fff
+    classDef caution fill:#ea580c,stroke:#c2410c,color:#fff
+    classDef avoid fill:#dc2626,stroke:#991b1b,color:#fff
 ```
 
 ---

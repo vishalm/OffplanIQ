@@ -32,12 +32,12 @@ Documentation   █████████░  88/100  — Excellent docs, arch
 graph TD
     A["Score Algorithm Duplication"] -->|"Risk: drift"| B["algorithm.ts"]
     A -->|"Risk: drift"| C["score-recalculator/index.ts"]
-    
+
     D["Two Watchlist Paths"] -->|"Direct Supabase"| E["WatchlistButton.tsx"]
     D -->|"Via API route"| F["useWatchlist hook"]
-    
+
     G["Edge Fn Email"] -->|"Raw HTML strings"| H["digest-sender"]
-    G -->|"React Email template unused"| I["WeeklyDigest.tsx"]
+    G -->|"Template unused"| I["WeeklyDigest.tsx"]
 ```
 
 | Issue | Severity | Recommendation |

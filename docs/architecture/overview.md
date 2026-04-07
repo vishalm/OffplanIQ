@@ -9,68 +9,73 @@
 ```mermaid
 flowchart TB
     subgraph Sources["Data Sources"]
-        DLD["🏛️ Dubai Land Department<br/><sub>dubailand.gov.ae</sub>"]
-        PF["🏠 Property Finder<br/><sub>propertyfinder.ae</sub>"]
-        BAYUT["🔮 Bayut<br/><sub>planned</sub>"]
-        RERA["📋 RERA<br/><sub>planned</sub>"]
+        DLD["Dubai Land Department\ndubailand.gov.ae"]
+        PF["Property Finder\npropertyfinder.ae"]
+        BAYUT["Bayut\nplanned"]
+        RERA["RERA\nplanned"]
     end
 
-    subgraph Pipeline["Python Scrapers · Railway · Nightly 02:00 UTC"]
+    subgraph Pipeline["Python Scrapers - Railway - Nightly 02:00 UTC"]
         direction LR
-        MAIN["main.py<br/>Orchestrator"]
-        DLD_S["dld.py<br/>Playwright<br/><sub>DLD transactions</sub>"]
-        PF_S["property_finder.py<br/>Playwright + requests<br/><sub>Listings + plans</sub>"]
-        MATCH["match_transactions.py<br/>Fuzzy word overlap<br/><sub>Links txns → projects</sub>"]
+        MAIN["main.py\nOrchestrator"]
+        DLD_S["dld.py\nPlaywright\nDLD transactions"]
+        PF_S["property_finder.py\nPlaywright + requests\nListings + plans"]
+        MATCH["match_transactions.py\nFuzzy word overlap\nLinks txns to projects"]
     end
 
     subgraph Supabase["Supabase Cloud"]
-        DB[(PostgreSQL<br/>11 tables<br/>RLS enabled)]
-        AUTH["🔐 Auth<br/>email/password<br/>JWT tokens"]
-        
+        DB[(PostgreSQL\n11 tables\nRLS enabled)]
+        AUTH["Auth\nemail/password\nJWT tokens"]
+
         subgraph Edge["Edge Functions"]
-            PSF_UP["psf-updater<br/><sub>Weighted avg PSF</sub>"]
-            SCORE["score-recalculator<br/><sub>All project scores</sub>"]
-            ALERT["alert-dispatcher<br/><sub>Hourly · pg_cron</sub>"]
-            DIGEST["digest-sender<br/><sub>Sunday 05:00 UTC</sub>"]
+            PSF_UP["psf-updater\nWeighted avg PSF"]
+            SCORE["score-recalculator\nAll project scores"]
+            ALERT["alert-dispatcher\nHourly via pg_cron"]
+            DIGEST["digest-sender\nSunday 05:00 UTC"]
         end
-        
-        RT["⚡ Realtime<br/>Alert push via WebSocket"]
+
+        RT["Realtime\nAlert push via WebSocket"]
     end
 
-    subgraph WebApp["Next.js 14 · Vercel"]
-        subgraph ServerComponents["Server Components (data fetching)"]
-            DASH["📊 /dashboard"]
-            PROJ["📈 /projects/[id]"]
-            ALERTS_P["🔔 /alerts"]
-            BILL["💳 /settings/billing"]
+    subgraph WebApp["Next.js 14 - Vercel"]
+        subgraph ServerComponents["Server Components"]
+            DASH["/dashboard"]
+            PROJ["/projects/id"]
+            ALERTS_P["/alerts"]
+            BILL["/settings/billing"]
         end
-        subgraph ClientComponents["Client Components (interactivity)"]
-            IRR_C["IrrCalculator<br/><sub>3 sliders + sensitivity</sub>"]
-            FILTER["FilterBar<br/><sub>Area chips + search</sub>"]
-            PREFS["AlertPrefsForm<br/><sub>Toggles + thresholds</sub>"]
+        subgraph ClientComponents["Client Components"]
+            IRR_C["IrrCalculator\n3 sliders + sensitivity"]
+            FILTER["FilterBar\nArea chips + search"]
+            PREFS["AlertPrefsForm\nToggles + thresholds"]
         end
         subgraph APIRoutes["API Routes"]
             CHECKOUT["POST /api/checkout"]
             WH["POST /api/webhooks/stripe"]
-            WL["POST|DELETE /api/watchlist"]
+            WL["POST-DELETE /api/watchlist"]
         end
-        MW["🛡️ middleware.ts<br/>Auth guard"]
+        MW["middleware.ts\nAuth guard"]
     end
 
     subgraph External["External Services"]
-        STRIPE["💳 Stripe<br/>AED subscriptions"]
-        RESEND["📧 Resend<br/>Transactional email"]
+        STRIPE["Stripe\nAED subscriptions"]
+        RESEND["Resend\nTransactional email"]
     end
 
     DLD --> DLD_S
     PF --> PF_S
-    MAIN --> DLD_S & PF_S & MATCH
-    DLD_S & PF_S --> DB
+    MAIN --> DLD_S
+    MAIN --> PF_S
+    MAIN --> MATCH
+    DLD_S --> DB
+    PF_S --> DB
     MATCH --> DB
     MAIN --> PSF_UP --> DB
     MAIN --> SCORE --> DB
-    ALERT --> DB & RESEND
-    DIGEST --> DB & RESEND
+    ALERT --> DB
+    ALERT --> RESEND
+    DIGEST --> DB
+    DIGEST --> RESEND
     RT --> ClientComponents
     DB --> ServerComponents
     AUTH --> MW --> ServerComponents
@@ -87,16 +92,16 @@ flowchart TB
 ```mermaid
 graph LR
     subgraph Vercel["Vercel"]
-        WEB["Next.js SSR<br/>+ API Routes"]
+        WEB["Next.js SSR\n+ API Routes"]
     end
-    subgraph SupaCloud["Supabase Cloud · Bahrain Region"]
-        PG["PostgreSQL 15<br/>+ RLS + pg_cron"]
-        EF["Edge Functions ×4"]
+    subgraph SupaCloud["Supabase Cloud - Bahrain Region"]
+        PG["PostgreSQL 15\n+ RLS + pg_cron"]
+        EF["Edge Functions x4"]
         SA["GoTrue Auth"]
         RL["Realtime WebSockets"]
     end
     subgraph Rail["Railway"]
-        PY["Python Scraper<br/>Nightly cron"]
+        PY["Python Scraper\nNightly cron"]
     end
     subgraph StripeCloud["Stripe"]
         SUB["Subscriptions API"]
@@ -105,10 +110,13 @@ graph LR
         EM["Email API"]
     end
 
-    WEB <-->|"Supabase JS SDK"| PG & SA & RL
+    WEB <-->|"Supabase JS SDK"| PG
+    WEB <--> SA
+    WEB <--> RL
     PY -->|"REST API + service key"| PG
     PY -->|"HTTP POST"| EF
-    EF --> PG & EM
+    EF --> PG
+    EF --> EM
     WEB --> SUB
     SUB -->|"webhooks"| WEB
 ```
@@ -156,7 +164,7 @@ sequenceDiagram
     else Valid session
         MW->>SC: Forward request
         SC->>DB: Query with auth.uid()
-        Note over DB: RLS policy enforces<br/>user can only see own data
+        Note over DB: RLS policy enforces user<br/>can only see own data
         DB-->>SC: Filtered results
         SC-->>B: Rendered HTML
     end
@@ -206,23 +214,26 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-    CRON["pg_cron<br/>Every hour"] --> AD["alert-dispatcher"]
-    
-    AD --> FETCH["Fetch all watchlists<br/>+ user alert preferences"]
-    AD --> SNAP["Fetch yesterday's<br/>score snapshots"]
-    
-    FETCH & SNAP --> COMPARE{Compare scores}
-    
-    COMPARE -->|"score dropped<br/>≥ threshold"| DROP["Insert score_drop alert"]
-    COMPARE -->|"score rose<br/>≥ threshold"| RISE["Insert score_rise alert"]
-    COMPARE -->|"handover delayed<br/>(deduped 30d)"| DELAY["Insert handover_delay alert"]
-    
-    DROP & RISE & DELAY --> CHECK{email_alerts<br/>enabled?}
-    CHECK -->|Yes| SEND["Send via Resend API"]
-    CHECK -->|No| DBONLY["Alert in DB only<br/>visible in /alerts"]
-    
-    SEND --> USER["📧 User inbox"]
-    DBONLY --> RT["⚡ Realtime push<br/>to /alerts page"]
+    CRON["pg_cron\nEvery hour"] --> AD["alert-dispatcher"]
+
+    AD --> FETCH["Fetch all watchlists\n+ user alert preferences"]
+    AD --> SNAP["Fetch yesterday's\nscore snapshots"]
+
+    FETCH --> COMPARE{"Compare scores"}
+    SNAP --> COMPARE
+
+    COMPARE -->|"score dropped\ngte threshold"| DROP["Insert score_drop alert"]
+    COMPARE -->|"score rose\ngte threshold"| RISE["Insert score_rise alert"]
+    COMPARE -->|"handover delayed\ndeduped 30d"| DELAY["Insert handover_delay alert"]
+
+    DROP --> CHECK{"email_alerts\nenabled?"}
+    RISE --> CHECK
+    DELAY --> CHECK
+    CHECK -->|"Yes"| SEND["Send via Resend API"]
+    CHECK -->|"No"| DBONLY["Alert in DB only\nvisible in /alerts"]
+
+    SEND --> USER["User inbox"]
+    DBONLY --> RT["Realtime push\nto /alerts page"]
 ```
 
 ---
