@@ -53,6 +53,28 @@ services:
       - scraper
 
   # ─────────────────────────────────────────────
+  # Polling Daemon — continuously scrapes PF every 6 hours
+  # docker compose --profile poller up -d
+  # ─────────────────────────────────────────────
+  poller:
+    build:
+      context: .
+      dockerfile: docker/scraper.Dockerfile
+    container_name: offplaniq-poller
+    command: python jobs/polling_daemon.py --interval ${POLL_INTERVAL_S:-21600}
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      POLL_INTERVAL_S: ${POLL_INTERVAL_S:-21600}
+      POLL_CITIES: ${POLL_CITIES:-dubai,abu-dhabi,ras-al-khaimah}
+    volumes:
+      - ./apps/scraper:/app
+    profiles:
+      - poller
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
   # Stripe CLI Webhook Listener (opt-in: --profile stripe)
   # Forwards Stripe events → http://web:3000/api/webhooks/stripe
   # ─────────────────────────────────────────────

@@ -64,7 +64,14 @@ def main():
     parser.add_argument("--skip-pf",     action="store_true")
     parser.add_argument("--skip-match",  action="store_true")
     parser.add_argument("--date",        type=str, help="Specific date YYYY-MM-DD for DLD backfill")
+    parser.add_argument("--poll",        action="store_true", help="Run polling daemon (continuous)")
+    parser.add_argument("--poll-interval", type=int, default=21600, help="Poll interval seconds (default 6h)")
     args = parser.parse_args()
+
+    # Polling mode — delegates to polling daemon
+    if args.poll:
+        cmd = ["python", "jobs/polling_daemon.py", "--interval", str(args.poll_interval)]
+        os.execvp("python", cmd)
 
     print(f"OffplanIQ Scraper — {date.today()}")
     errors = []
