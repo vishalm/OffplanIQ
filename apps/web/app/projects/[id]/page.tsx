@@ -92,57 +92,46 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
 
             {/* Gauge */}
             <div className="shrink-0">
-              <InvestmentGauge score={p.score} size={200} />
+              <InvestmentGauge score={p.score} size={150} />
             </div>
           </div>
         </div>
 
-        {/* Key metrics */}
-        <div className="grid grid-cols-5 gap-4 mb-6 stagger">
-          {[
-            {
-              label: 'Current PSF',
-              value: p.current_psf ? `AED ${p.current_psf.toLocaleString()}` : '-',
-              sub: psfDelta !== null ? `${psfDelta > 0 ? '+' : ''}${psfDelta}% since launch` : undefined,
-              accent: psfDelta !== null && psfDelta > 0,
-            },
-            {
-              label: 'Launch PSF',
-              value: p.launch_psf ? `AED ${p.launch_psf.toLocaleString()}` : '-',
-              sub: p.launch_date ? new Date(p.launch_date).toLocaleDateString('en-AE', { month: 'short', year: 'numeric' }) : undefined,
-            },
-            {
-              label: 'Sell-through',
-              value: `${p.sellthrough_pct}%`,
-              sub: `${p.units_sold} of ${p.total_units} units`,
-              accent: p.sellthrough_pct >= 70,
-            },
-            {
-              label: 'Handover',
-              value: p.current_handover_date ? new Date(p.current_handover_date).toLocaleDateString('en-AE', { month: 'short', year: 'numeric' }) : '-',
-              sub: p.handover_delay_days > 0 ? `${Math.round(p.handover_delay_days / 30)}mo delayed` : 'On schedule',
-              danger: p.handover_delay_days > 0,
-            },
-            {
-              label: 'Resale premium',
-              value: `${p.resale_premium_pct > 0 ? '+' : ''}${p.resale_premium_pct}%`,
-              sub: 'vs launch price',
-              accent: p.resale_premium_pct > 0,
-              danger: p.resale_premium_pct < 0,
-            },
-          ].map(stat => (
-            <div key={stat.label} className="metric-card">
-              <p className="metric-label">{stat.label}</p>
-              <p className={`metric-value ${stat.accent ? '!text-green-600' : stat.danger ? '!text-red-500' : ''}`}>
-                {stat.value}
+        {/* Key metrics - clean horizontal strip */}
+        <div className="flex items-start gap-10 px-2 mb-8">
+          <div>
+            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Current PSF</p>
+            <p className="text-xl font-bold text-gray-900 mt-0.5">{p.current_psf ? `AED ${p.current_psf.toLocaleString()}` : '-'}</p>
+            {psfDelta !== null && (
+              <p className={`text-xs font-medium mt-0.5 ${psfDelta > 0 ? 'text-green-600' : psfDelta < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                {psfDelta > 0 ? '+' : ''}{psfDelta}% since launch
               </p>
-              {stat.sub && (
-                <p className={`metric-sub ${stat.danger ? '!text-red-400' : stat.accent ? '!text-green-500' : ''}`}>
-                  {stat.sub}
-                </p>
-              )}
-            </div>
-          ))}
+            )}
+          </div>
+          <div className="w-px h-10 bg-gray-200 self-center" />
+          <div>
+            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Sell-through</p>
+            <p className="text-xl font-bold text-gray-900 mt-0.5">{p.sellthrough_pct}%</p>
+            <p className="text-xs text-gray-400 mt-0.5">{p.units_sold} of {p.total_units} units</p>
+          </div>
+          <div className="w-px h-10 bg-gray-200 self-center" />
+          <div>
+            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Handover</p>
+            <p className="text-xl font-bold text-gray-900 mt-0.5">
+              {p.current_handover_date ? new Date(p.current_handover_date).toLocaleDateString('en-AE', { month: 'short', year: 'numeric' }) : '-'}
+            </p>
+            <p className={`text-xs font-medium mt-0.5 ${p.handover_delay_days > 0 ? 'text-red-500' : 'text-green-600'}`}>
+              {p.handover_delay_days > 0 ? `${Math.round(p.handover_delay_days / 30)}mo delayed` : 'On schedule'}
+            </p>
+          </div>
+          <div className="w-px h-10 bg-gray-200 self-center" />
+          <div>
+            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Resale premium</p>
+            <p className={`text-xl font-bold mt-0.5 ${p.resale_premium_pct > 0 ? 'text-green-600' : p.resale_premium_pct < 0 ? 'text-red-500' : 'text-gray-900'}`}>
+              {p.resale_premium_pct > 0 ? '+' : ''}{p.resale_premium_pct}%
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">vs launch price</p>
+          </div>
         </div>
 
         {/* Analysis + PSF Chart side by side */}
