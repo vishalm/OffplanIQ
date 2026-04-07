@@ -25,7 +25,7 @@ export function AlertPreferencesForm({
   const supabase = createClient()
 
   async function save() {
-    await supabase.from('alert_preferences').upsert({ user_id: userId, ...values })
+    await supabase.from('alert_preferences').upsert({ user_id: userId, ...values } as any)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }

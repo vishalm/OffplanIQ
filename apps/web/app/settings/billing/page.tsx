@@ -19,7 +19,7 @@ export default async function BillingPage({
     .eq('id', session.user.id)
     .single()
 
-  const tier = profile?.subscription_tier ?? 'free'
+  const tier = (profile as any)?.subscription_tier ?? 'free'
 
   const plans = [
     {
@@ -82,9 +82,9 @@ export default async function BillingPage({
           <h1 className="text-2xl font-medium text-gray-900">Billing & plan</h1>
           <p className="text-sm text-gray-500 mt-1">
             Current plan: <span className="font-medium capitalize text-gray-800">{tier}</span>
-            {profile?.subscription_ends_at && (
+            {(profile as any)?.subscription_ends_at && (
               <span className="ml-2 text-gray-400">
-                · renews {new Date(profile.subscription_ends_at).toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                · renews {new Date((profile as any).subscription_ends_at).toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
             )}
           </p>

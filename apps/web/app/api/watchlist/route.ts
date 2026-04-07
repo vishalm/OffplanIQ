@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
   const { error } = await supabase
     .from('watchlist')
-    .insert({ user_id: session.user.id, project_id })
+    .insert({ user_id: session.user.id, project_id } as any)
 
   if (error && error.code !== '23505') { // ignore duplicate key
     return NextResponse.json({ error: error.message }, { status: 500 })

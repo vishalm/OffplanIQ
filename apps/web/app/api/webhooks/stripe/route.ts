@@ -54,7 +54,7 @@ export async function POST(req: Request) {
           subscription_tier: tier,
           subscription_ends_at: new Date(subscription.current_period_end * 1000).toISOString(),
           seats_limit: tier === 'agency' ? 5 : 1,
-        })
+        } as any)
         .eq('id', userId)
 
       break
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
         .update({
           subscription_tier: sub.status === 'active' ? tier : 'free',
           subscription_ends_at: new Date(sub.current_period_end * 1000).toISOString(),
-        })
+        } as any)
         .eq('stripe_subscription_id', sub.id)
 
       break
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
 
       await supabase
         .from('user_profiles')
-        .update({ subscription_tier: 'free', stripe_subscription_id: null })
+        .update({ subscription_tier: 'free', stripe_subscription_id: null } as any)
         .eq('stripe_subscription_id', sub.id)
 
       break

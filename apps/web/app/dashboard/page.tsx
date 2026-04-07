@@ -38,7 +38,7 @@ export default async function DashboardPage({
     .eq('id', session.user.id)
     .single()
 
-  const tier = profile?.subscription_tier ?? 'free'
+  const tier = (profile as any)?.subscription_tier ?? 'free'
   const isFree = tier === 'free'
 
   // Build query

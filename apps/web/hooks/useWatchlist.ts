@@ -19,7 +19,7 @@ export function useWatchlist(userId: string) {
       .select('project_id')
       .eq('user_id', userId)
       .then(({ data }) => {
-        setWatchedIds(new Set((data ?? []).map(r => r.project_id)))
+        setWatchedIds(new Set((data ?? []).map((r: any) => r.project_id)))
         setLoading(false)
       })
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps

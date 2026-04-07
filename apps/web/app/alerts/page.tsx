@@ -44,12 +44,12 @@ export default async function AlertsPage() {
     .eq('user_id', session.user.id)
     .single()
 
-  const unreadCount = alerts?.filter(a => !a.is_read).length ?? 0
+  const unreadCount = (alerts as any[])?.filter((a: any) => !a.is_read).length ?? 0
 
   // Mark all as read (fire and forget)
   if (unreadCount > 0) {
-    supabase
-      .from('alerts_log')
+    ;(supabase
+      .from('alerts_log') as any)
       .update({ is_read: true })
       .eq('user_id', session.user.id)
       .eq('is_read', false)

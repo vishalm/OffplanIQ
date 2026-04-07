@@ -1,0 +1,208 @@
+# OffplanIQ — Docker Compose
+# Full local development stack: Supabase + Next.js + Scraper + Stripe webhook listener
+#
+# Usage:
+#   docker compose up              # Start everything
+#   docker compose up web           # Start just the web app
+#   docker compose up supabase-db   # Start just the database
+#   docker compose down             # Stop everything
+#   docker compose down -v          # Stop + delete volumes (reset DB)
+
+services:
+  # ─────────────────────────────────────────────
+  # Supabase PostgreSQL Database
+  # ─────────────────────────────────────────────
+  supabase-db:
+    image: supabase/postgres:15.6.1.143
+    container_name: offplaniq-db
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-offplaniq_local}
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      JWT_EXP: 3600
+    volumes:
+      - supabase-db-data:/var/lib/postgresql/data
+      - ./supabase/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./supabase/migrations/002_cron_and_rpc.sql:/docker-entrypoint-initdb.d/02-cron.sql:ro
+      - ./supabase/seed/seed.sql:/docker-entrypoint-initdb.d/03-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Supabase Auth (GoTrue)
+  # ─────────────────────────────────────────────
+  supabase-auth:
+    image: supabase/gotrue:v2.158.1
+    container_name: offplaniq-auth
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    ports:
+      - "54321:9999"
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://localhost:54321
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-offplaniq_local}@supabase-db:5432/postgres
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST: http://localhost:3000/**
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMTP_ADMIN_EMAIL: admin@offplaniq.local
+      GOTRUE_SMTP_HOST: supabase-inbucket
+      GOTRUE_SMTP_PORT: 2500
+      GOTRUE_SMTP_SENDER_NAME: OffplanIQ
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Supabase REST API (PostgREST)
+  # ─────────────────────────────────────────────
+  supabase-rest:
+    image: postgrest/postgrest:v12.2.3
+    container_name: offplaniq-rest
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    ports:
+      - "54323:3000"
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-offplaniq_local}@supabase-db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Email catcher (for local auth emails)
+  # ─────────────────────────────────────────────
+  supabase-inbucket:
+    image: inbucket/inbucket:3.0.3
+    container_name: offplaniq-inbucket
+    ports:
+      - "54324:9000"  # Web UI: http://localhost:54324
+      - "2500:2500"   # SMTP
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Supabase Studio (DB admin UI)
+  # ─────────────────────────────────────────────
+  supabase-studio:
+    image: supabase/studio:20240422-5cf8f30
+    container_name: offplaniq-studio
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    ports:
+      - "54325:3000"  # http://localhost:54325
+    environment:
+      STUDIO_PG_META_URL: http://supabase-meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-offplaniq_local}
+      DEFAULT_ORGANIZATION_NAME: OffplanIQ
+      DEFAULT_PROJECT_NAME: OffplanIQ Local
+      SUPABASE_URL: http://supabase-rest:3000
+      SUPABASE_REST_URL: http://supabase-rest:3000
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU}
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Supabase Meta (required by Studio)
+  # ─────────────────────────────────────────────
+  supabase-meta:
+    image: supabase/postgres-meta:v0.83.2
+    container_name: offplaniq-meta
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: supabase-db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-offplaniq_local}
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Next.js Web App
+  # ─────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    container_name: offplaniq-web
+    ports:
+      - "3000:3000"
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54323
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU}
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_NAME: OffplanIQ
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-pk_test_placeholder}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
+      STRIPE_PRICE_ID_INVESTOR: ${STRIPE_PRICE_ID_INVESTOR:-price_placeholder}
+      STRIPE_PRICE_ID_AGENCY: ${STRIPE_PRICE_ID_AGENCY:-price_placeholder}
+      RESEND_API_KEY: ${RESEND_API_KEY:-re_placeholder}
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      - /app/apps/web/node_modules
+      - /app/node_modules
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Python Scraper
+  # ─────────────────────────────────────────────
+  scraper:
+    build:
+      context: .
+      dockerfile: docker/scraper.Dockerfile
+    container_name: offplaniq-scraper
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      SUPABASE_URL: http://supabase-rest:3000
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU}
+    volumes:
+      - ./apps/scraper:/app
+    profiles:
+      - scraper  # Only starts with: docker compose --profile scraper up
+
+  # ─────────────────────────────────────────────
+  # Stripe Webhook Listener (local dev)
+  # ─────────────────────────────────────────────
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    container_name: offplaniq-stripe
+    command: listen --forward-to http://web:3000/api/webhooks/stripe --api-key ${STRIPE_SECRET_KEY:-sk_test_placeholder}
+    depends_on:
+      - web
+    profiles:
+      - stripe  # Only starts with: docker compose --profile stripe up
+    restart: unless-stopped
+
+volumes:
+  supabase-db-data:
+    driver: local

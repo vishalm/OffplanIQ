@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     .from('user_profiles')
     .select('email, stripe_customer_id')
     .eq('id', session.user.id)
-    .single()
+    .single() as { data: { email: string; stripe_customer_id: string | null } | null; error: any }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!
 

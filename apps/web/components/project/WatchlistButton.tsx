@@ -24,7 +24,7 @@ export function WatchlistButton({
         .eq('project_id', projectId)
     } else {
       await supabase.from('watchlist')
-        .insert({ user_id: userId, project_id: projectId })
+        .insert({ user_id: userId, project_id: projectId } as any)
     }
     setWatching(!watching)
     setLoading(false)

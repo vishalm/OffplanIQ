@@ -38,7 +38,7 @@ export default async function ProjectDetailPage({ params }: Props) {
     .eq('id', session.user.id)
     .single()
 
-  const isPaid = profile?.subscription_tier !== 'free'
+  const isPaid = (profile as any)?.subscription_tier !== 'free'
 
   // Fetch project — try slug first, then id
   const { data: project } = await supabase
@@ -52,14 +52,15 @@ export default async function ProjectDetailPage({ params }: Props) {
     .or(`slug.eq.${params.id},id.eq.${params.id}`)
     .single()
 
-  if (!project) notFound()
+  const p = project as any
+  if (!p) notFound()
 
   // Check if user has watchlisted this project
   const { data: watchlistEntry } = await supabase
     .from('watchlist')
     .select('id')
     .eq('user_id', session.user.id)
-    .eq('project_id', project.id)
+    .eq('project_id', p.id)
     .single()
 
   const isWatchlisted = !!watchlistEntry
@@ -76,59 +77,59 @@ export default async function ProjectDetailPage({ params }: Props) {
         {/* Hero */}
         <div className="flex items-start justify-between mb-6 gap-4">
           <div className="flex-1">
-            <h1 className="text-2xl font-medium text-gray-900">{project.name}</h1>
+            <h1 className="text-2xl font-medium text-gray-900">{p.name}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              {project.area} · {project.developer?.name} · {project.total_units} units · Handover {project.current_handover_date}
+              {p.area} · {p.developer?.name} · {p.total_units} units · Handover {p.current_handover_date}
             </p>
             <div className="flex gap-2 mt-3">
               <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-                project.handover_status === 'on_track'
+                p.handover_status === 'on_track'
                   ? 'bg-green-50 text-green-700'
-                  : project.handover_status === 'delayed'
+                  : p.handover_status === 'delayed'
                   ? 'bg-red-50 text-red-700'
                   : 'bg-amber-50 text-amber-700'
               }`}>
-                {project.handover_status.replace('_', ' ')}
+                {p.handover_status.replace('_', ' ')}
               </span>
-              {project.rera_project_id && (
+              {p.rera_project_id && (
                 <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-500">
-                  RERA {project.rera_project_id}
+                  RERA {p.rera_project_id}
                 </span>
               )}
             </div>
           </div>
           <div className="flex items-center gap-3">
             <WatchlistButton
-              projectId={project.id}
+              projectId={p.id}
               userId={session.user.id}
               isWatchlisted={isWatchlisted}
             />
-            <ScoreBadge score={project.score} size="lg" breakdown={project.score_breakdown} />
+            <ScoreBadge score={p.score} size="lg" breakdown={p.score_breakdown} />
           </div>
         </div>
 
         {/* Key stats */}
         <div className="grid grid-cols-4 gap-3 mb-6">
           {[
-            { label: 'Launch PSF', value: `AED ${project.launch_psf?.toLocaleString()}`, sub: project.launch_date },
+            { label: 'Launch PSF', value: `AED ${p.launch_psf?.toLocaleString()}`, sub: p.launch_date },
             {
               label: 'Current PSF',
-              value: `AED ${project.current_psf?.toLocaleString()}`,
-              sub: project.launch_psf
-                ? `${Math.round(((project.current_psf! - project.launch_psf) / project.launch_psf) * 100)}% since launch`
+              value: `AED ${p.current_psf?.toLocaleString()}`,
+              sub: p.launch_psf
+                ? `${Math.round(((p.current_psf! - p.launch_psf) / p.launch_psf) * 100)}% since launch`
                 : undefined,
-              green: (project.current_psf ?? 0) > (project.launch_psf ?? 0),
+              green: (p.current_psf ?? 0) > (p.launch_psf ?? 0),
             },
             {
               label: 'Sell-through',
-              value: `${project.sellthrough_pct}%`,
-              sub: `${project.units_sold} of ${project.total_units} units`,
+              value: `${p.sellthrough_pct}%`,
+              sub: `${p.units_sold} of ${p.total_units} units`,
             },
             {
               label: 'Resale premium',
-              value: `${project.resale_premium_pct > 0 ? '+' : ''}${project.resale_premium_pct}%`,
+              value: `${p.resale_premium_pct > 0 ? '+' : ''}${p.resale_premium_pct}%`,
               sub: 'vs launch price',
-              green: project.resale_premium_pct > 0,
+              green: p.resale_premium_pct > 0,
             },
           ].map((stat) => (
             <div key={stat.label} className="bg-gray-100 rounded-xl p-4">
@@ -144,14 +145,14 @@ export default async function ProjectDetailPage({ params }: Props) {
         {/* PSF chart */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">PSF history</p>
-          <PsfChart data={project.psf_history ?? []} />
+          <PsfChart data={p.psf_history ?? []} />
         </div>
 
         {/* IRR Calculator — paid gate */}
         {isPaid ? (
           <IrrCalculator
-            project={project}
-            paymentPlans={project.payment_plans ?? []}
+            project={p}
+            paymentPlans={p.payment_plans ?? []}
           />
         ) : (
           <PaywallBanner
@@ -162,7 +163,7 @@ export default async function ProjectDetailPage({ params }: Props) {
 
         {/* Developer scorecard — paid gate */}
         {isPaid ? (
-          <DeveloperCard developer={project.developer} />
+          <DeveloperCard developer={p.developer} />
         ) : (
           <PaywallBanner
             title="Developer scorecard"

@@ -64,8 +64,8 @@ export async function Nav() {
           {/* User menu */}
           <NavUserMenu
             email={session?.user.email ?? ''}
-            name={profile?.full_name ?? ''}
-            tier={profile?.subscription_tier ?? 'free'}
+            name={(profile as any)?.full_name ?? ''}
+            tier={(profile as any)?.subscription_tier ?? 'free'}
           />
 
         </div>
