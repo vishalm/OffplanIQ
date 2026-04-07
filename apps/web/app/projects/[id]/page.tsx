@@ -1,18 +1,3 @@
-// apps/web/app/projects/[id]/page.tsx
-//
-// SCREEN 2: Project Detail
-// The core value page — investors spend 80% of time here.
-//
-// Sections:
-//   1. Hero: name, developer, score badge, status
-//   2. Key stats: launch PSF, current PSF, sell-through, resale premium
-//   3. PSF history chart (Recharts LineChart)
-//   4. Payment plan IRR calculator (client component — interactive)
-//   5. Developer scorecard
-//   6. Watchlist button
-//
-// Gate: IRR calculator + developer scorecard → paid only
-
 import { createServerClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import { PsfChart } from '@/components/charts/PsfChart'
@@ -25,171 +10,158 @@ import { InvestmentAnalysis } from '@/components/project/InvestmentAnalysis'
 import { InvestmentGauge } from '@/components/charts/InvestmentGauge'
 import { RiskRewardMatrix } from '@/components/charts/RiskRewardMatrix'
 
-interface Props {
-  params: { id: string }
-}
-
-export default async function ProjectDetailPage({ params }: Props) {
+export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
   const supabase = createServerClient()
-
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) redirect('/auth/login')
 
   const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('subscription_tier')
-    .eq('id', session.user.id)
-    .single()
-
+    .from('user_profiles').select('subscription_tier').eq('id', session.user.id).single()
   const isPaid = (profile as any)?.subscription_tier !== 'free'
 
-  // Fetch project by slug
   let { data: project } = await supabase
     .from('projects')
-    .select(`
-      *,
-      developer:developer_id(*),
-      payment_plans(*),
-      psf_history(recorded_date, psf, source)
-    `)
-    .eq('slug', params.id)
-    .single()
-
-  // Fallback: try by UUID if slug didn't match
+    .select('*, developer:developer_id(*), payment_plans(*), psf_history(recorded_date, psf, source)')
+    .eq('slug', params.id).single()
   if (!project) {
     const { data: byId } = await supabase
       .from('projects')
-      .select(`
-        *,
-        developer:developer_id(*),
-        payment_plans(*),
-        psf_history(recorded_date, psf, source)
-      `)
-      .eq('id', params.id)
-      .single()
+      .select('*, developer:developer_id(*), payment_plans(*), psf_history(recorded_date, psf, source)')
+      .eq('id', params.id).single()
     project = byId
   }
-
   const p = project as any
   if (!p) notFound()
 
-  // Check if user has watchlisted this project
   const { data: watchlistEntry } = await supabase
-    .from('watchlist')
-    .select('id')
-    .eq('user_id', session.user.id)
-    .eq('project_id', p.id)
-    .single()
-
+    .from('watchlist').select('id').eq('user_id', session.user.id).eq('project_id', p.id).single()
   const isWatchlisted = !!watchlistEntry
 
-  // Fetch comparable projects for analysis
   const { data: allProjects } = await supabase
     .from('projects')
-    .select('id, name, slug, area, score, current_psf, sellthrough_pct, handover_status, developer:developer_id(name)')
+    .select('id, name, slug, area, score, current_psf, launch_psf, sellthrough_pct, handover_status, handover_delay_days, developer:developer_id(name)')
     .in('status', ['active', 'pre_launch'])
     .order('score', { ascending: false })
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 py-8">
+  const psfDelta = p.launch_psf && p.current_psf
+    ? Math.round(((p.current_psf - p.launch_psf) / p.launch_psf) * 100) : null
 
-        {/* Back nav */}
-        <a href="/dashboard" className="text-sm text-gray-400 hover:text-gray-700 mb-6 inline-block">
-          ← Back to feed
+  return (
+    <div className="min-h-screen" style={{ background: 'rgb(var(--bg))' }}>
+      <div className="max-w-6xl mx-auto px-6 py-10">
+
+        {/* Breadcrumb */}
+        <a href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-8">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+          Back to projects
         </a>
 
         {/* Hero */}
-        <div className="flex items-start justify-between mb-6 gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-medium text-gray-900">{p.name}</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {p.area} · {p.developer?.name} · {p.total_units} units · Handover {p.current_handover_date}
-            </p>
-            <div className="flex gap-2 mt-3">
-              <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-                p.handover_status === 'on_track'
-                  ? 'bg-green-50 text-green-700'
-                  : p.handover_status === 'delayed'
-                  ? 'bg-red-50 text-red-700'
-                  : 'bg-amber-50 text-amber-700'
-              }`}>
-                {p.handover_status.replace('_', ' ')}
-              </span>
-              {p.rera_project_id && (
-                <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-500">
-                  RERA {p.rera_project_id}
+        <div className="card p-8 mb-6 fade-in">
+          <div className="flex items-start justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                  p.handover_status === 'on_track' ? 'bg-green-50 text-green-700' :
+                  p.handover_status === 'delayed' ? 'bg-red-50 text-red-700' :
+                  'bg-amber-50 text-amber-700'
+                }`}>
+                  {(p.handover_status || '').replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                 </span>
+                {p.status === 'pre_launch' && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">Pre-launch</span>
+                )}
+              </div>
+
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1">{p.name}</h1>
+
+              <p className="text-base text-gray-500">
+                by {p.developer?.name} · {p.area}
+              </p>
+
+              {p.description && (
+                <p className="text-sm text-gray-400 mt-3 max-w-xl leading-relaxed">{p.description}</p>
               )}
+
+              <div className="flex items-center gap-4 mt-5">
+                <WatchlistButton projectId={p.id} userId={session.user.id} isWatchlisted={isWatchlisted} />
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <WatchlistButton
-              projectId={p.id}
-              userId={session.user.id}
-              isWatchlisted={isWatchlisted}
-            />
-            <ScoreBadge score={p.score} size="lg" breakdown={p.score_breakdown} />
+
+            {/* Gauge */}
+            <div className="shrink-0">
+              <InvestmentGauge score={p.score} size={200} />
+            </div>
           </div>
         </div>
 
-        {/* Key stats */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        {/* Key metrics */}
+        <div className="grid grid-cols-5 gap-4 mb-6 stagger">
           {[
-            { label: 'Launch PSF', value: `AED ${p.launch_psf?.toLocaleString()}`, sub: p.launch_date },
             {
               label: 'Current PSF',
-              value: `AED ${p.current_psf?.toLocaleString()}`,
-              sub: p.launch_psf
-                ? `${Math.round(((p.current_psf! - p.launch_psf) / p.launch_psf) * 100)}% since launch`
-                : undefined,
-              green: (p.current_psf ?? 0) > (p.launch_psf ?? 0),
+              value: p.current_psf ? `AED ${p.current_psf.toLocaleString()}` : '-',
+              sub: psfDelta !== null ? `${psfDelta > 0 ? '+' : ''}${psfDelta}% since launch` : undefined,
+              accent: psfDelta !== null && psfDelta > 0,
+            },
+            {
+              label: 'Launch PSF',
+              value: p.launch_psf ? `AED ${p.launch_psf.toLocaleString()}` : '-',
+              sub: p.launch_date ? new Date(p.launch_date).toLocaleDateString('en-AE', { month: 'short', year: 'numeric' }) : undefined,
             },
             {
               label: 'Sell-through',
               value: `${p.sellthrough_pct}%`,
               sub: `${p.units_sold} of ${p.total_units} units`,
+              accent: p.sellthrough_pct >= 70,
+            },
+            {
+              label: 'Handover',
+              value: p.current_handover_date ? new Date(p.current_handover_date).toLocaleDateString('en-AE', { month: 'short', year: 'numeric' }) : '-',
+              sub: p.handover_delay_days > 0 ? `${Math.round(p.handover_delay_days / 30)}mo delayed` : 'On schedule',
+              danger: p.handover_delay_days > 0,
             },
             {
               label: 'Resale premium',
               value: `${p.resale_premium_pct > 0 ? '+' : ''}${p.resale_premium_pct}%`,
               sub: 'vs launch price',
-              green: p.resale_premium_pct > 0,
+              accent: p.resale_premium_pct > 0,
+              danger: p.resale_premium_pct < 0,
             },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-gray-100 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">{stat.label}</p>
-              <p className={`text-lg font-medium ${stat.green ? 'text-green-700' : 'text-gray-900'}`}>
+          ].map(stat => (
+            <div key={stat.label} className="metric-card">
+              <p className="metric-label">{stat.label}</p>
+              <p className={`metric-value ${stat.accent ? '!text-green-600' : stat.danger ? '!text-red-500' : ''}`}>
                 {stat.value}
               </p>
-              {stat.sub && <p className="text-xs text-gray-400 mt-1">{stat.sub}</p>}
+              {stat.sub && (
+                <p className={`metric-sub ${stat.danger ? '!text-red-400' : stat.accent ? '!text-green-500' : ''}`}>
+                  {stat.sub}
+                </p>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Investment Gauge + AI Analysis */}
-        <div className="grid grid-cols-[220px_1fr] gap-5 mb-6">
-          <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-center">
-            <InvestmentGauge score={p.score} />
-          </div>
+        {/* Analysis + PSF Chart side by side */}
+        <div className="grid grid-cols-[1fr_360px] gap-5 mb-6">
           <InvestmentAnalysis project={p} allProjects={allProjects ?? []} />
+          <div className="space-y-4">
+            <div className="card p-5">
+              <p className="section-label mb-4">PSF history</p>
+              <PsfChart data={p.psf_history ?? []} />
+            </div>
+          </div>
         </div>
 
-        {/* Risk vs Reward Matrix */}
+        {/* Risk/Reward Matrix */}
         <RiskRewardMatrix projects={allProjects ?? []} currentSlug={p.slug} />
 
-        {/* PSF chart */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">PSF history</p>
-          <PsfChart data={p.psf_history ?? []} />
-        </div>
-
-        {/* IRR Calculator — paid gate */}
+        {/* IRR Calculator */}
         {isPaid ? (
-          <IrrCalculator
-            project={p}
-            paymentPlans={p.payment_plans ?? []}
-          />
+          <IrrCalculator project={p} paymentPlans={p.payment_plans ?? []} />
         ) : (
           <PaywallBanner
             title="Payment plan IRR calculator"
@@ -197,7 +169,7 @@ export default async function ProjectDetailPage({ params }: Props) {
           />
         )}
 
-        {/* Developer scorecard — paid gate */}
+        {/* Developer scorecard */}
         {isPaid ? (
           <DeveloperCard developer={p.developer} />
         ) : (
@@ -207,42 +179,28 @@ export default async function ProjectDetailPage({ params }: Props) {
           />
         )}
 
-        {/* Data sources citation */}
-        <div className="mt-8 border-t border-gray-200 pt-5">
-          <p className="text-xs font-medium text-gray-500 mb-2">Data Sources</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-gray-700">Property Finder</p>
-                <p className="text-xs text-gray-400">Listing prices, unit types, project details. Scraped live.</p>
+        {/* Data sources */}
+        <div className="mt-10 pt-6 divider">
+          <p className="section-label mb-4">Data sources</p>
+          <div className="grid grid-cols-4 gap-4">
+            {[
+              { color: 'bg-blue-500', name: 'Property Finder', desc: 'Listing prices, unit types, project details' },
+              { color: 'bg-green-500', name: 'Dubai Land Department', desc: 'Transaction records, PSF history' },
+              { color: 'bg-purple-500', name: 'Developer Filings', desc: 'Payment plans, handover dates, brochures' },
+              { color: 'bg-amber-500', name: 'RERA', desc: 'Complaints, violations, registration' },
+            ].map(src => (
+              <div key={src.name} className="flex items-start gap-2.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${src.color} mt-1.5 shrink-0`} />
+                <div>
+                  <p className="text-xs font-medium text-gray-600">{src.name}</p>
+                  <p className="text-xs text-gray-400">{src.desc}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 mt-1.5 shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-gray-700">Dubai Land Department</p>
-                <p className="text-xs text-gray-400">Transaction records, PSF history, registration data.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-1.5 shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-gray-700">Developer Filings</p>
-                <p className="text-xs text-gray-400">Payment plans, handover dates, unit counts, brochures.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-gray-700">RERA</p>
-                <p className="text-xs text-gray-400">Developer complaints, violations, registration status.</p>
-              </div>
-            </div>
+            ))}
           </div>
-          <p className="text-xs text-gray-400 mt-3">
-            Scores and analysis are algorithmic and do not constitute financial advice.
-            Last updated: {new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' })}.
+          <p className="text-xs text-gray-400 mt-4">
+            Analysis is algorithmic and does not constitute financial advice.
+            Updated {new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' })}.
           </p>
         </div>
 

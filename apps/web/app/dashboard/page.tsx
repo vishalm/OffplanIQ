@@ -1,19 +1,3 @@
-// apps/web/app/dashboard/page.tsx
-//
-// SCREEN 1: Project Feed
-// The main landing page after login.
-// Server Component — data fetched server-side for SEO + speed.
-//
-// Layout:
-//   - Market summary metrics (4 cards)
-//   - Filter bar (area, status, score range)
-//   - Sortable project table
-//   - Each row links to /projects/[slug]
-//
-// Access control:
-//   - Free users: see top 20 projects, PSF lagged 30 days
-//   - Paid users: all projects, live data
-
 import { createServerClient } from '@/lib/supabase/server'
 import { ProjectTable } from '@/components/project/ProjectTable'
 import { MarketMetrics } from '@/components/project/MarketMetrics'
@@ -28,12 +12,9 @@ export default async function DashboardPage({
   searchParams: { city?: string; area?: string; status?: string; sort?: string; q?: string }
 }) {
   const supabase = createServerClient()
-
-  // Auth check
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) redirect('/auth/login')
 
-  // Get user subscription tier
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('subscription_tier')
@@ -43,7 +24,6 @@ export default async function DashboardPage({
   const tier = (profile as any)?.subscription_tier ?? 'free'
   const isFree = tier === 'free'
 
-  // Build query
   let query = supabase
     .from('projects')
     .select(`
@@ -55,87 +35,76 @@ export default async function DashboardPage({
     `)
     .in('status', ['active', 'pre_launch'])
 
-  // Apply sort from URL params
   const sortParam = searchParams.sort ?? 'score'
   const sortMap: Record<string, { column: string; ascending: boolean }> = {
-    score:       { column: 'score', ascending: false },
-    psf:         { column: 'current_psf', ascending: false },
-    psf_asc:     { column: 'current_psf', ascending: true },
+    score: { column: 'score', ascending: false },
+    psf: { column: 'current_psf', ascending: false },
+    psf_asc: { column: 'current_psf', ascending: true },
     sellthrough: { column: 'sellthrough_pct', ascending: false },
     sellthrough_asc: { column: 'sellthrough_pct', ascending: true },
-    name:        { column: 'name', ascending: true },
-    area:        { column: 'area', ascending: true },
-    handover:    { column: 'current_handover_date', ascending: true },
-    score_asc:   { column: 'score', ascending: true },
+    name: { column: 'name', ascending: true },
+    area: { column: 'area', ascending: true },
+    handover: { column: 'current_handover_date', ascending: true },
+    score_asc: { column: 'score', ascending: true },
   }
   const sortConfig = sortMap[sortParam] ?? sortMap.score
   query = query.order(sortConfig.column, { ascending: sortConfig.ascending })
 
-  // Apply city filter (filter by all districts in that city)
   const cityDistricts: Record<string, string[]> = {
-    'Dubai': ['Business Bay','Downtown Dubai','Dubai Marina','Dubai Hills','JVC','JLT','Creek Harbour','Dubai Harbour','Palm Jumeirah','Meydan','Arjan','Damac Hills','Sobha Hartland','Dubai South','Expo City','Al Furjan','Motor City','Sports City','Arabian Ranches','Mohammed Bin Rashid City'],
-    'Abu Dhabi': ['Saadiyat Island','Yas Island','Al Reem Island','Al Raha Beach'],
-    'Ras Al Khaimah': ['Al Marjan Island','Ras Al Khaimah'],
+    'Dubai': ['Business Bay','Downtown Dubai','Dubai Marina','Dubai Hills','Dubai Hills Estate','JVC','JLT','Creek Harbour','Dubai Creek Harbour (The Lagoons)','Dubai Harbour','Palm Jumeirah','Meydan','Arjan','Damac Hills','Sobha Hartland','Dubai South','Dubai South (Dubai World Central)','Expo City','Al Furjan','Motor City','Sports City','Arabian Ranches','Mohammed Bin Rashid City','Jumeirah Village Circle','Dubai Design District','Mina Rashid','The Valley','Nad Al Sheba','Bukadra','Dubai Land'],
+    'Abu Dhabi': ['Saadiyat Island','Yas Island','Al Reem Island','Al Raha Beach','Abu Dhabi','Ghantoot','Al Hudayriat Island','Al Maryah Island','Khalifa City'],
+    'Ras Al Khaimah': ['Al Marjan Island','Ras Al Khaimah','Mina Al Arab','Al Hamra Village','RAK Central'],
   }
   if (searchParams.city && !searchParams.area) {
     const districts = cityDistricts[searchParams.city]
     if (districts) query = query.in('area', districts)
   }
+  if (searchParams.area) query = query.eq('area', searchParams.area)
+  if (searchParams.status) query = query.eq('handover_status', searchParams.status)
+  if (searchParams.q) query = query.ilike('name', `%${searchParams.q}%`)
+  if (isFree) query = query.limit(20)
 
-  // Apply district filter
-  if (searchParams.area) {
-    query = query.eq('area', searchParams.area)
-  }
-  if (searchParams.status) {
-    query = query.eq('handover_status', searchParams.status)
-  }
-  if (searchParams.q) {
-    query = query.ilike('name', `%${searchParams.q}%`)
-  }
-
-  // Free tier: limit to top 20
-  if (isFree) {
-    query = query.limit(20)
-  }
-
-  const { data: projects, error } = await query
-
-  if (error) {
-    console.error('Dashboard query error:', error)
-  }
-
-  // Market summary
+  const { data: projects } = await query
   const { data: marketData } = await supabase.rpc('get_market_summary')
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen" style={{ background: 'rgb(var(--bg))' }}>
+      <div className="max-w-7xl mx-auto px-6 py-10">
 
-        <div className="flex items-center justify-between mb-8">
+        {/* Header */}
+        <div className="flex items-end justify-between mb-10">
           <div>
-            <h1 className="text-2xl font-medium text-gray-900">Off-plan tracker</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Dubai · {projects?.length ?? 0} projects · updated hourly
+            <p className="section-label mb-2">Market overview</p>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+              Off-plan tracker
+            </h1>
+            <p className="text-sm text-gray-400 mt-2">
+              {projects?.length ?? 0} projects across UAE · Live data
             </p>
           </div>
           {isFree && (
             <a
               href="/settings/billing"
-              className="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition"
+              className="text-sm font-medium text-white bg-gray-900 px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
             >
-              Upgrade for live data →
+              Upgrade for full access
             </a>
           )}
         </div>
 
+        {/* Metrics */}
         <MarketMetrics data={marketData} />
 
-        <MarketInsights projects={projects ?? []} />
+        {/* Intelligence + Heat Map side by side */}
+        <div className="grid grid-cols-[1fr_380px] gap-5 mb-8">
+          <MarketInsights projects={projects ?? []} />
+          <AreaHeatMap projects={projects ?? []} />
+        </div>
 
-        <AreaHeatMap projects={projects ?? []} />
-
+        {/* Filters */}
         <FilterBar currentFilters={searchParams} />
 
+        {/* Table */}
         <ProjectTable
           projects={projects ?? []}
           tier={tier}
@@ -144,9 +113,13 @@ export default async function DashboardPage({
         />
 
         {isFree && (
-          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
-            Showing top 20 projects on the free plan.
-            <a href="/settings/billing" className="underline ml-1">Upgrade to see all 142+ projects →</a>
+          <div className="mt-8 card p-5 text-center">
+            <p className="text-sm text-gray-500">
+              Viewing top 20 projects on the free plan.
+            </p>
+            <a href="/settings/billing" className="text-sm font-medium text-blue-600 hover:text-blue-700 mt-1 inline-block">
+              Unlock all projects and live data →
+            </a>
           </div>
         )}
 
