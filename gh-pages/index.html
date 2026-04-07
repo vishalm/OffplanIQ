@@ -195,8 +195,13 @@
             font-size: 14px; padding: 6px 0; color: var(--text-secondary);
             display: flex; align-items: center; gap: 8px;
         }
-        .plan-card li::before { content: '✓'; color: var(--green); font-weight: 700; font-size: 14px; }
-        .plan-card li.no::before { content: '—'; color: var(--text-tertiary); }
+        .plan-card li::before {
+            content: ''; width: 18px; height: 18px; flex-shrink: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%231e8e3e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") no-repeat center;
+        }
+        .plan-card li.no::before {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2380868b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3C/svg%3E") no-repeat center;
+        }
         .plan-card .plan-btn {
             display: block; width: 100%; padding: 12px; border-radius: 24px; text-align: center;
             font-size: 14px; font-weight: 500; text-decoration: none; transition: all 0.2s;
@@ -287,32 +292,32 @@
         <p class="subtitle">Stop scrolling WhatsApp groups. Get data-driven insights that actually move the needle.</p>
         <div class="feature-grid">
             <div class="feature-card">
-                <div class="icon" style="background: var(--blue-light); color: var(--blue);">📊</div>
+                <div class="icon" style="background: var(--blue-light); color: var(--blue);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
                 <h3>Live PSF tracking</h3>
                 <p>Price-per-sqft history for every project, updated daily from Dubai Land Department transaction records.</p>
             </div>
             <div class="feature-card">
-                <div class="icon" style="background: var(--green-light); color: var(--green);">📈</div>
+                <div class="icon" style="background: var(--green-light); color: var(--green);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div>
                 <h3>IRR calculator</h3>
                 <p>Compare payment plans side by side as real annualised returns. See how down payment structure affects your ROI.</p>
             </div>
             <div class="feature-card">
-                <div class="icon" style="background: var(--yellow-light); color: #e37400;">🏗️</div>
+                <div class="icon" style="background: var(--yellow-light); color: #e37400;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
                 <h3>Developer scorecards</h3>
                 <p>On-time delivery rate, RERA complaints, quality ratings — every developer scored 0 to 100 transparently.</p>
             </div>
             <div class="feature-card">
-                <div class="icon" style="background: var(--red-light); color: var(--red);">⚡</div>
+                <div class="icon" style="background: var(--red-light); color: var(--red);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
                 <h3>Sell-through velocity</h3>
                 <p>Know how fast units are actually selling. Slow sell-through means developer pressure — your negotiation leverage.</p>
             </div>
             <div class="feature-card">
-                <div class="icon" style="background: #e8f0fe; color: var(--blue);">🔔</div>
+                <div class="icon" style="background: #e8f0fe; color: var(--blue);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
                 <h3>Score alerts</h3>
                 <p>Get notified the moment a project you're watching drops or rises in score. Never miss a market move.</p>
             </div>
             <div class="feature-card">
-                <div class="icon" style="background: var(--green-light); color: var(--green);">📧</div>
+                <div class="icon" style="background: var(--green-light); color: var(--green);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
                 <h3>Sunday digest</h3>
                 <p>One email every Sunday with your watchlist moves, new launches, and the Dubai market PSF snapshot.</p>
             </div>
