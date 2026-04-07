@@ -227,32 +227,28 @@ const paymentPlans: { project_slug: string; plans: { name: string; down_payment_
 ]
 
 // ─────────────────────────────────────────────
-// Generate synthetic but realistic PSF history
-// based on launch_psf → current_psf over time
+// Real PSF data points only — no interpolation, no synthetic data
+// We record 2 verified points: launch PSF (at launch date) and current PSF (today)
+// More granular history will come from the DLD scraper once selectors are live
 // ─────────────────────────────────────────────
-function generatePsfHistory(projectId: string, launchPsf: number, currentPsf: number, launchDate: string) {
-  const launch = new Date(launchDate)
-  const now = new Date()
-  const months = Math.min(24, Math.round((now.getTime() - launch.getTime()) / (30 * 86400000)))
-  if (months < 2) return []
-
+function realPsfPoints(projectId: string, launchPsf: number | null, currentPsf: number | null, launchDate: string | null) {
   const points = []
-  for (let i = 0; i <= months; i++) {
-    const d = new Date(launch)
-    d.setMonth(d.getMonth() + i)
-    if (d > now) break
-
-    const progress = i / months
-    // Add some realistic noise (±3%)
-    const noise = 1 + (Math.random() - 0.5) * 0.06
-    const psf = Math.round((launchPsf + (currentPsf - launchPsf) * progress) * noise)
-
+  if (launchPsf && launchDate) {
     points.push({
       project_id: projectId,
-      recorded_date: d.toISOString().split('T')[0],
-      psf,
-      source: 'dld' as const,
-      sample_size: Math.floor(Math.random() * 20) + 5,
+      recorded_date: launchDate,
+      psf: launchPsf,
+      source: 'manual' as const,
+      sample_size: 1,
+    })
+  }
+  if (currentPsf) {
+    points.push({
+      project_id: projectId,
+      recorded_date: new Date().toISOString().split('T')[0],
+      psf: currentPsf,
+      source: 'manual' as const,
+      sample_size: 1,
     })
   }
   return points
@@ -314,21 +310,20 @@ async function main() {
   }
   console.log(`\n📦 Inserted ${planCount} payment plans`)
 
-  // 6. Generate PSF history
-  console.log(`\n📈 Generating PSF history...`)
+  // 6. Record real PSF data points (launch + current only, no interpolation)
+  console.log(`\n📈 Recording real PSF data points...`)
   let psfCount = 0
   for (const [slug, proj] of projMap) {
-    if (!proj.launch_psf || !proj.current_psf || !proj.launch_date) continue
-    const history = generatePsfHistory(proj.id, proj.launch_psf, proj.current_psf, proj.launch_date)
-    if (history.length === 0) continue
+    const points = realPsfPoints(proj.id, proj.launch_psf, proj.current_psf, proj.launch_date)
+    if (points.length === 0) continue
 
     const { error } = await supabase
       .from('psf_history')
-      .upsert(history as any, { onConflict: 'project_id,recorded_date,source' })
+      .upsert(points as any, { onConflict: 'project_id,recorded_date,source' })
     if (error) console.error(`  PSF error (${slug}):`, error.message)
-    else psfCount += history.length
+    else psfCount += points.length
   }
-  console.log(`   ✅ ${psfCount} PSF data points inserted`)
+  console.log(`   ✅ ${psfCount} real PSF data points recorded (launch + current per project)`)
 
   // 7. Calculate scores
   console.log(`\n🎯 Calculating scores...`)
