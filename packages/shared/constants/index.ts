@@ -24,6 +24,13 @@ export const DUBAI_AREAS = [
   'Damac Hills',
   'Arabian Ranches',
   'Mohammed Bin Rashid City',
+  'Dubai South',
+  'Expo City',
+  'Abu Dhabi',
+  'Yas Island',
+  'Saadiyat Island',
+  'Ras Al Khaimah',
+  'Al Marjan Island',
 ] as const
 
 export type DubaiArea = typeof DUBAI_AREAS[number]

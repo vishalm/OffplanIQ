@@ -5,9 +5,11 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useCallback } from 'react'
 
 const AREAS = [
-  'Business Bay', 'Downtown Dubai', 'Dubai Marina',
-  'JVC', 'JLT', 'Creek Harbour', 'Dubai Harbour',
-  'Palm Jumeirah', 'Meydan', 'Arjan',
+  'Business Bay', 'Downtown Dubai', 'Dubai Marina', 'Dubai Hills',
+  'JVC', 'JLT', 'Creek Harbour', 'Dubai Harbour', 'Palm Jumeirah',
+  'Meydan', 'Arjan', 'Damac Hills', 'Sobha Hartland', 'Dubai South',
+  'Expo City', 'Abu Dhabi', 'Yas Island', 'Saadiyat Island',
+  'Ras Al Khaimah', 'Al Marjan Island',
 ]
 
 const HANDOVER_STATUSES = [
