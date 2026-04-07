@@ -39,3 +39,4 @@ supabase/.temp
 .turbo/
 .vercel/
 *.log
+user.md

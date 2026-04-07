@@ -78,77 +78,44 @@ export default async function DashboardPage({
     }))
     .sort((a, b) => b.count - a.count)
 
-  // ─── Build filtered query ───
-  let query = supabase
-    .from('projects')
-    .select(`
-      id, name, slug, area, status, handover_status,
-      total_units, units_sold, sellthrough_pct,
-      launch_psf, current_psf, score, score_breakdown,
-      current_handover_date, handover_delay_days,
-      developer:developer_id(name, slug, developer_score)
-    `)
-    .in('status', ['active', 'pre_launch'])
+  // ─── Fetch ALL projects (filtering/sorting/pagination done client-side in JS) ───
+  let filtered = allProjects as any[]
 
-  // Sort
-  const sortParam = searchParams.sort ?? 'score'
-  const sortMap: Record<string, { column: string; ascending: boolean }> = {
-    score: { column: 'score', ascending: false },
-    score_asc: { column: 'score', ascending: true },
-    psf: { column: 'current_psf', ascending: false },
-    psf_asc: { column: 'current_psf', ascending: true },
-    sellthrough: { column: 'sellthrough_pct', ascending: false },
-    name: { column: 'name', ascending: true },
-    handover: { column: 'current_handover_date', ascending: true },
-  }
-  const sc = sortMap[sortParam] ?? sortMap.score
-  query = query.order(sc.column, { ascending: sc.ascending })
-
-  // City filter
+  // Server-side filters (reduce payload for sidebar selections)
   if (searchParams.city && !searchParams.area) {
     const areas = cityMap[searchParams.city]
-    if (areas) query = query.in('area', [...areas])
+    if (areas) filtered = filtered.filter((p: any) => [...areas].includes(p.area))
   }
-  // District
-  if (searchParams.area) query = query.eq('area', searchParams.area)
-  // Handover status
-  if (searchParams.status) query = query.eq('handover_status', searchParams.status)
-  // Search
-  if (searchParams.q) query = query.ilike('name', `%${searchParams.q}%`)
-  // Score filter
+  if (searchParams.area) filtered = filtered.filter((p: any) => p.area === searchParams.area)
+  if (searchParams.status) filtered = filtered.filter((p: any) => p.handover_status === searchParams.status)
+  if (searchParams.q) {
+    const q = searchParams.q.toLowerCase()
+    filtered = filtered.filter((p: any) => p.name?.toLowerCase().includes(q) || p.developer?.name?.toLowerCase().includes(q))
+  }
   if (searchParams.minScore) {
     const min = parseInt(searchParams.minScore)
-    if (min === 0) query = query.lt('score', 55)
-    else query = query.gte('score', min)
+    filtered = min === 0 ? filtered.filter((p: any) => p.score < 55) : filtered.filter((p: any) => p.score >= min)
   }
-  // PSF range
   if (searchParams.psf) {
     const [lo, hi] = searchParams.psf.split('-').map(Number)
-    if (lo >= 0) query = query.gte('current_psf', lo)
-    if (hi && hi < 99999) query = query.lte('current_psf', hi)
+    filtered = filtered.filter((p: any) => (p.current_psf || 0) >= lo && (p.current_psf || 0) <= hi)
   }
-  // Developer (via post-filter since it's a joined field)
+  if (searchParams.developer) filtered = filtered.filter((p: any) => p.developer?.name === searchParams.developer)
 
-  // Free tier limit
-  if (isFree) query = query.limit(20)
+  // Fetch full data for filtered projects (need score_breakdown, payment_plans etc)
+  const filteredIds = filtered.map((p: any) => p.id)
+  const { data: fullProjects } = filteredIds.length > 0
+    ? await supabase.from('projects')
+        .select('id, name, slug, area, status, handover_status, total_units, units_sold, sellthrough_pct, launch_psf, current_psf, score, score_breakdown, current_handover_date, handover_delay_days, developer:developer_id(name, slug, developer_score)')
+        .in('id', filteredIds)
+    : { data: [] }
 
-  const { data: projects } = await query
-  let filtered = (projects ?? []) as any[]
+  const tableData = (fullProjects ?? []) as any[]
+  const totalFiltered = tableData.length
 
-  // Developer post-filter (can't filter on joined fields in supabase)
-  if (searchParams.developer) {
-    filtered = filtered.filter((p: any) => p.developer?.name === searchParams.developer)
-  }
-
-  // ─── Pagination ───
-  const page = Math.max(1, parseInt(searchParams.page ?? '1'))
-  const totalFiltered = filtered.length
-  const totalPages = Math.ceil(totalFiltered / PAGE_SIZE)
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
-  // ─── Stats ───
-  const avgScore = filtered.length ? Math.round(filtered.reduce((s: number, p: any) => s + (p.score || 0), 0) / filtered.length) : 0
-  const withPsf = filtered.filter((p: any) => p.current_psf)
+  // Stats
+  const avgScore = totalFiltered ? Math.round(tableData.reduce((s: number, p: any) => s + (p.score || 0), 0) / totalFiltered) : 0
+  const withPsf = tableData.filter((p: any) => p.current_psf)
   const avgPsf = withPsf.length ? Math.round(withPsf.reduce((s: number, p: any) => s + p.current_psf, 0) / withPsf.length) : 0
 
   return (
