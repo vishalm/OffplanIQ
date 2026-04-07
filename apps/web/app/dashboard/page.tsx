@@ -23,7 +23,7 @@ import { redirect } from 'next/navigation'
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { area?: string; status?: string; sort?: string; q?: string }
+  searchParams: { city?: string; area?: string; status?: string; sort?: string; q?: string }
 }) {
   const supabase = createServerClient()
 
@@ -69,7 +69,18 @@ export default async function DashboardPage({
   const sortConfig = sortMap[sortParam] ?? sortMap.score
   query = query.order(sortConfig.column, { ascending: sortConfig.ascending })
 
-  // Apply filters from searchParams
+  // Apply city filter (filter by all districts in that city)
+  const cityDistricts: Record<string, string[]> = {
+    'Dubai': ['Business Bay','Downtown Dubai','Dubai Marina','Dubai Hills','JVC','JLT','Creek Harbour','Dubai Harbour','Palm Jumeirah','Meydan','Arjan','Damac Hills','Sobha Hartland','Dubai South','Expo City','Al Furjan','Motor City','Sports City','Arabian Ranches','Mohammed Bin Rashid City'],
+    'Abu Dhabi': ['Saadiyat Island','Yas Island','Al Reem Island','Al Raha Beach'],
+    'Ras Al Khaimah': ['Al Marjan Island','Ras Al Khaimah'],
+  }
+  if (searchParams.city && !searchParams.area) {
+    const districts = cityDistricts[searchParams.city]
+    if (districts) query = query.in('area', districts)
+  }
+
+  // Apply district filter
   if (searchParams.area) {
     query = query.eq('area', searchParams.area)
   }

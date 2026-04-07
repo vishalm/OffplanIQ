@@ -5,34 +5,29 @@
 // ─────────────────────────────────────────────
 // DUBAI AREAS
 // ─────────────────────────────────────────────
-export const DUBAI_AREAS = [
-  'Business Bay',
-  'Downtown Dubai',
-  'Dubai Marina',
-  'JVC',             // Jumeirah Village Circle
-  'JLT',             // Jumeirah Lakes Towers
-  'Creek Harbour',
-  'Dubai Harbour',
-  'Palm Jumeirah',
-  'Meydan',
-  'Arjan',
-  'Dubai Hills',
-  'Sobha Hartland',
-  'Al Furjan',
-  'Motor City',
-  'Sports City',
-  'Damac Hills',
-  'Arabian Ranches',
-  'Mohammed Bin Rashid City',
-  'Dubai South',
-  'Expo City',
-  'Abu Dhabi',
-  'Yas Island',
-  'Saadiyat Island',
-  'Ras Al Khaimah',
-  'Al Marjan Island',
-] as const
+// City → District hierarchy
+// Expo City and Dubai South are sub-districts of Dubai
+export const CITY_DISTRICTS = {
+  'Dubai': [
+    'Business Bay', 'Downtown Dubai', 'Dubai Marina', 'JVC', 'JLT',
+    'Creek Harbour', 'Dubai Harbour', 'Palm Jumeirah', 'Meydan', 'Arjan',
+    'Dubai Hills', 'Sobha Hartland', 'Al Furjan', 'Motor City', 'Sports City',
+    'Damac Hills', 'Arabian Ranches', 'Mohammed Bin Rashid City',
+    'Dubai South', 'Expo City',
+  ],
+  'Abu Dhabi': [
+    'Saadiyat Island', 'Yas Island', 'Al Reem Island', 'Al Raha Beach',
+  ],
+  'Ras Al Khaimah': [
+    'Al Marjan Island', 'Ras Al Khaimah',
+  ],
+} as const
 
+export type City = keyof typeof CITY_DISTRICTS
+export const CITIES = Object.keys(CITY_DISTRICTS) as City[]
+
+// Flat list of all areas (for backward compat)
+export const DUBAI_AREAS = Object.values(CITY_DISTRICTS).flat()
 export type DubaiArea = typeof DUBAI_AREAS[number]
 
 // ─────────────────────────────────────────────
