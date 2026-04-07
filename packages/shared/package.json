@@ -1,0 +1,12 @@
+{
+  "name": "@offplaniq/shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./types": "./types/index.ts",
+    "./utils": "./utils/index.ts",
+    "./constants": "./constants/index.ts"
+  }
+}

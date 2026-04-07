@@ -1,0 +1,13 @@
+# Railway deployment config for the Python scraper service
+# railway.toml — place in apps/scraper/
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python main.py"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Cron: run at 02:00 UTC (06:00 UAE) every day
+# Set in Railway Dashboard: Settings → Cron → "0 2 * * *"
