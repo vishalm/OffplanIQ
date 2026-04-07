@@ -22,6 +22,8 @@ import { ScoreBadge } from '@/components/project/ScoreBadge'
 import { WatchlistButton } from '@/components/project/WatchlistButton'
 import { PaywallBanner } from '@/components/ui/PaywallBanner'
 import { InvestmentAnalysis } from '@/components/project/InvestmentAnalysis'
+import { InvestmentGauge } from '@/components/charts/InvestmentGauge'
+import { RiskRewardMatrix } from '@/components/charts/RiskRewardMatrix'
 
 interface Props {
   params: { id: string }
@@ -165,8 +167,16 @@ export default async function ProjectDetailPage({ params }: Props) {
           ))}
         </div>
 
-        {/* AI Investment Analysis */}
-        <InvestmentAnalysis project={p} allProjects={allProjects ?? []} />
+        {/* Investment Gauge + AI Analysis */}
+        <div className="grid grid-cols-[220px_1fr] gap-5 mb-6">
+          <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-center">
+            <InvestmentGauge score={p.score} />
+          </div>
+          <InvestmentAnalysis project={p} allProjects={allProjects ?? []} />
+        </div>
+
+        {/* Risk vs Reward Matrix */}
+        <RiskRewardMatrix projects={allProjects ?? []} currentSlug={p.slug} />
 
         {/* PSF chart */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
