@@ -70,8 +70,6 @@ services:
       POLL_CITIES: ${POLL_CITIES:-dubai,abu-dhabi,ras-al-khaimah}
     volumes:
       - ./apps/scraper:/app
-    profiles:
-      - poller
     restart: unless-stopped
 
   # ─────────────────────────────────────────────

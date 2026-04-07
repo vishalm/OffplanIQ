@@ -1,18 +1,17 @@
 FROM python:3.12-slim
 
-# Install Playwright system dependencies
 RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
+    wget gnupg fonts-unifont fonts-liberation \
+    libnss3 libatk-bridge2.0-0 libdrm2 libxcomposite1 \
+    libxdamage1 libxrandr2 libgbm1 libasound2t64 libpango-1.0-0 \
+    libcairo2 libatspi2.0-0 libcups2 libxkbcommon0 libxfixes3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY apps/scraper/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Playwright browsers
-RUN playwright install chromium --with-deps
+RUN playwright install chromium
 
 COPY apps/scraper/ .
 
