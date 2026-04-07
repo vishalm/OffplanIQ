@@ -12,7 +12,7 @@
 -- ─────────────────────────────────────────────
 -- EXTENSIONS
 -- ─────────────────────────────────────────────
-create extension if not exists "uuid-ossp";
+-- gen_random_uuid() is built into PG 13+, no extension needed on Supabase Cloud
 create extension if not exists "pg_cron";
 
 -- ─────────────────────────────────────────────
@@ -53,7 +53,7 @@ create type subscription_tier as enum ('free', 'investor', 'agency');
 -- DEVELOPERS
 -- ─────────────────────────────────────────────
 create table developers (
-  id                    uuid primary key default uuid_generate_v4(),
+  id                    uuid primary key default gen_random_uuid(),
   name                  text not null,
   slug                  text not null unique,
   rera_developer_id     text,                    -- RERA registration number
@@ -82,7 +82,7 @@ create table developers (
 -- PROJECTS
 -- ─────────────────────────────────────────────
 create table projects (
-  id                    uuid primary key default uuid_generate_v4(),
+  id                    uuid primary key default gen_random_uuid(),
   developer_id          uuid references developers(id) not null,
 
   -- Identity
@@ -148,7 +148,7 @@ create index idx_projects_developer on projects(developer_id);
 -- The core time-series table. Appended daily by scraper.
 -- ─────────────────────────────────────────────
 create table psf_history (
-  id            uuid primary key default uuid_generate_v4(),
+  id            uuid primary key default gen_random_uuid(),
   project_id    uuid references projects(id) not null,
   recorded_date date not null,
   psf           integer not null,               -- AED per sqft
@@ -166,7 +166,7 @@ create index idx_psf_project_date on psf_history(project_id, recorded_date desc)
 -- Multiple plans per project (developer can offer 60/40, 1%, post-handover, etc.)
 -- ─────────────────────────────────────────────
 create table payment_plans (
-  id                    uuid primary key default uuid_generate_v4(),
+  id                    uuid primary key default gen_random_uuid(),
   project_id            uuid references projects(id) not null,
   name                  text not null,           -- '60/40 Standard', '1% Monthly', 'Post-Handover'
   description           text,
@@ -188,7 +188,7 @@ create table payment_plans (
 -- Raw transaction records from Dubai Land Department
 -- ─────────────────────────────────────────────
 create table dld_transactions (
-  id                    uuid primary key default uuid_generate_v4(),
+  id                    uuid primary key default gen_random_uuid(),
   project_id            uuid references projects(id),   -- nullable, matched by scraper
   dld_transaction_id    text unique not null,
   transaction_date      date not null,
@@ -237,7 +237,7 @@ create table user_profiles (
 -- Users can watch specific projects for alerts
 -- ─────────────────────────────────────────────
 create table watchlist (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   user_id     uuid references user_profiles(id) on delete cascade not null,
   project_id  uuid references projects(id) on delete cascade not null,
   created_at  timestamptz default now(),
@@ -248,7 +248,7 @@ create table watchlist (
 -- ALERT PREFERENCES
 -- ─────────────────────────────────────────────
 create table alert_preferences (
-  id                      uuid primary key default uuid_generate_v4(),
+  id                      uuid primary key default gen_random_uuid(),
   user_id                 uuid references user_profiles(id) on delete cascade not null unique,
   score_drop_threshold    integer default 5,     -- alert if score drops >= N points
   score_rise_threshold    integer default 5,
@@ -266,7 +266,7 @@ create table alert_preferences (
 -- Every fired alert is logged here (for dedup + history)
 -- ─────────────────────────────────────────────
 create table alerts_log (
-  id              uuid primary key default uuid_generate_v4(),
+  id              uuid primary key default gen_random_uuid(),
   user_id         uuid references user_profiles(id) on delete cascade not null,
   project_id      uuid references projects(id),
   alert_type      alert_type not null,
@@ -284,7 +284,7 @@ create index idx_alerts_user on alerts_log(user_id, sent_at desc);
 -- Daily snapshot of each project's score (for trend charts)
 -- ─────────────────────────────────────────────
 create table score_snapshots (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   project_id  uuid references projects(id) not null,
   score_date  date not null,
   score       integer not null,
