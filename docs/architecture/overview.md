@@ -82,17 +82,18 @@ flowchart TB
 
 ## Deployment Topology
 
+> **No self-hosted database.** Supabase Cloud is the single backend — DB, Auth, Realtime, Edge Functions, cron, and storage all in one. Zero database ops.
+
 ```mermaid
 graph LR
     subgraph Vercel["Vercel"]
-        WEB["Next.js SSR<br/>+ API Routes<br/>+ Static Assets"]
+        WEB["Next.js SSR<br/>+ API Routes"]
     end
     subgraph SupaCloud["Supabase Cloud · Bahrain Region"]
-        PG["PostgreSQL 15"]
+        PG["PostgreSQL 15<br/>+ RLS + pg_cron"]
         EF["Edge Functions ×4"]
         SA["GoTrue Auth"]
         RL["Realtime WebSockets"]
-        PGCRON["pg_cron Extension"]
     end
     subgraph Rail["Railway"]
         PY["Python Scraper<br/>Nightly cron"]
@@ -107,11 +108,19 @@ graph LR
     WEB <-->|"Supabase JS SDK"| PG & SA & RL
     PY -->|"REST API + service key"| PG
     PY -->|"HTTP POST"| EF
-    PGCRON -->|"hourly / weekly"| EF
     EF --> PG & EM
     WEB --> SUB
     SUB -->|"webhooks"| WEB
 ```
+
+### Why Supabase for everything?
+- **One platform** = PostgreSQL + Auth + Realtime + Edge Functions + pg_cron + Storage
+- **Zero database ops** — no backups, no scaling, no patching to manage
+- **RLS baked in** — security at the database layer, not the application layer
+- **Edge Functions** replace Lambda/Cloud Functions for scheduled jobs
+- **pg_cron** replaces external cron services for hourly alerts and weekly digests
+- **Realtime** pushes alert counts to the UI without polling
+- **$25/mo Pro plan** covers all needs for the first 1000 users
 
 ---
 
@@ -267,7 +276,8 @@ graph TB
 |----------|-----------|
 | **No ML in scoring** | Investors trust formulas they can understand. ML later as "premium signal" |
 | **Python scrapers, TS everything else** | Playwright Python is more mature for complex scraping. Clean boundary via REST API |
-| **Supabase Edge Fns for cron** | No separate scheduler infra. pg_cron triggers functions directly |
+| **Supabase for everything** | DB + Auth + Realtime + Edge Fns + cron + storage in one. Zero database ops to manage |
+| **No self-hosted Postgres** | Supabase Cloud handles backups, scaling, patching. Docker only runs the web app |
 | **AED integers (no decimals)** | Property prices don't need sub-AED precision. Simpler math, no floating point errors |
 | **Server Components by default** | Less JS shipped. Client Components only where user interaction is required |
 | **RLS on everything** | Security at the database layer. Can't accidentally leak user data even if app code has bugs |
