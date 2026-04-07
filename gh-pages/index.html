@@ -4,394 +4,428 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OffplanIQ — Documentation</title>
+    <meta name="description" content="Dubai off-plan property intelligence platform documentation">
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
-            --bg: #0d1117;
-            --surface: #161b22;
-            --border: #30363d;
+            --bg: #0a0e14;
+            --surface: #12161e;
+            --surface-2: #1a1f2e;
+            --border: #252d3a;
             --text: #e6edf3;
-            --text-muted: #8b949e;
+            --text-muted: #7d8590;
             --accent: #58a6ff;
             --accent-hover: #79c0ff;
             --green: #3fb950;
             --red: #f85149;
             --orange: #d29922;
             --purple: #bc8cff;
+            --teal: #39d0d8;
+            --radius: 10px;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
             background: var(--bg);
             color: var(--text);
-            line-height: 1.6;
+            line-height: 1.7;
+            font-size: 15px;
         }
-        .layout {
-            display: flex;
-            min-height: 100vh;
-        }
+        .layout { display: flex; min-height: 100vh; }
+
+        /* ─── Sidebar ─── */
         .sidebar {
             width: 280px;
             background: var(--surface);
             border-right: 1px solid var(--border);
-            padding: 24px 16px;
+            padding: 20px 14px;
             position: fixed;
-            top: 0;
-            left: 0;
+            top: 0; left: 0;
             height: 100vh;
             overflow-y: auto;
+            z-index: 100;
+            transition: transform 0.3s ease;
         }
-        .sidebar h1 {
-            font-size: 20px;
-            margin-bottom: 4px;
-            color: var(--accent);
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 8px 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
         }
-        .sidebar .subtitle {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-bottom: 24px;
+        .sidebar-header svg { width: 32px; height: 32px; flex-shrink: 0; }
+        .sidebar-header .title { font-size: 18px; font-weight: 700; color: var(--text); }
+        .sidebar-header .title span { color: var(--accent); }
+        .sidebar-header .version {
+            font-size: 10px;
+            background: var(--accent);
+            color: var(--bg);
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: 600;
         }
         .sidebar nav a {
-            display: block;
-            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 12px;
             color: var(--text-muted);
             text-decoration: none;
-            border-radius: 6px;
-            font-size: 14px;
-            margin-bottom: 2px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            margin-bottom: 1px;
             transition: all 0.15s;
         }
-        .sidebar nav a:hover, .sidebar nav a.active {
-            background: rgba(88, 166, 255, 0.1);
-            color: var(--accent);
-        }
+        .sidebar nav a:hover { background: rgba(88, 166, 255, 0.08); color: var(--text); }
+        .sidebar nav a.active { background: rgba(88, 166, 255, 0.12); color: var(--accent); font-weight: 500; }
+        .sidebar nav a .icon { font-size: 15px; width: 20px; text-align: center; }
         .sidebar nav .section-title {
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
             color: var(--text-muted);
-            padding: 16px 12px 6px;
+            padding: 14px 12px 5px;
+            opacity: 0.7;
         }
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 20px;
+        }
+        .sidebar-footer a {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 12px;
+            padding: 4px 0;
+        }
+        .sidebar-footer a:hover { color: var(--accent); }
+
+        /* ─── Mobile menu ─── */
+        .mobile-header {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 52px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            z-index: 99;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+        }
+        .hamburger {
+            background: none; border: none; color: var(--text); font-size: 20px; cursor: pointer; padding: 4px;
+        }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 99; }
+        .overlay.active { display: block; }
+
+        /* ─── Main ─── */
         .main {
             margin-left: 280px;
             flex: 1;
-            padding: 40px 60px;
-            max-width: 1000px;
+            padding: 40px 56px;
+            max-width: 960px;
         }
-        .main h1 { font-size: 32px; margin-bottom: 8px; }
-        .main h2 { font-size: 24px; margin-top: 40px; margin-bottom: 16px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-        .main h3 { font-size: 18px; margin-top: 28px; margin-bottom: 12px; }
-        .main p { margin-bottom: 16px; color: var(--text); }
-        .main ul, .main ol { margin-bottom: 16px; padding-left: 24px; }
-        .main li { margin-bottom: 6px; }
+        .main h1 { font-size: 30px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.5px; }
+        .main h2 {
+            font-size: 21px; font-weight: 600; margin-top: 44px; margin-bottom: 16px;
+            color: var(--text);
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .main h3 { font-size: 16px; font-weight: 600; margin-top: 28px; margin-bottom: 10px; color: var(--text); }
+        .main p { margin-bottom: 14px; color: #c9d1d9; }
+        .main ul, .main ol { margin-bottom: 14px; padding-left: 22px; }
+        .main li { margin-bottom: 5px; color: #c9d1d9; }
         .main code {
-            background: var(--surface);
-            padding: 2px 6px;
-            border-radius: 4px;
+            background: var(--surface-2);
+            padding: 2px 7px;
+            border-radius: 5px;
             font-size: 13px;
             border: 1px solid var(--border);
+            font-family: 'SF Mono', 'Fira Code', monospace;
         }
         .main pre {
             background: var(--surface);
             padding: 16px;
-            border-radius: 8px;
+            border-radius: var(--radius);
             border: 1px solid var(--border);
             overflow-x: auto;
             margin-bottom: 16px;
         }
         .main pre code { border: none; padding: 0; background: none; }
-        .main table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        .main th, .main td {
-            padding: 10px 14px;
-            border: 1px solid var(--border);
-            text-align: left;
-        }
-        .main th { background: var(--surface); font-weight: 600; }
+        .main table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13.5px; }
+        .main th, .main td { padding: 10px 14px; border: 1px solid var(--border); text-align: left; }
+        .main th { background: var(--surface); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
         .main blockquote {
             border-left: 3px solid var(--accent);
-            padding: 8px 16px;
+            padding: 10px 16px;
             margin-bottom: 16px;
             color: var(--text-muted);
-            background: rgba(88, 166, 255, 0.05);
-            border-radius: 0 6px 6px 0;
+            background: rgba(88, 166, 255, 0.04);
+            border-radius: 0 var(--radius) var(--radius) 0;
+            font-style: italic;
         }
-        .mermaid {
+
+        /* ─── Mermaid ─── */
+        .mermaid-wrapper {
             background: var(--surface);
-            padding: 20px;
-            border-radius: 8px;
+            padding: 24px;
+            border-radius: var(--radius);
             border: 1px solid var(--border);
             margin: 16px 0;
-            text-align: center;
+            overflow-x: auto;
         }
-        .health-bar {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-        .health-bar .label { width: 140px; font-size: 14px; }
-        .health-bar .bar {
-            flex: 1;
-            height: 24px;
-            background: var(--surface);
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            overflow: hidden;
-        }
-        .health-bar .fill {
-            height: 100%;
-            border-radius: 12px;
-            transition: width 0.5s;
-        }
-        .health-bar .score { font-size: 14px; font-weight: 600; width: 60px; text-align: right; }
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .badge-green { background: rgba(63, 185, 80, 0.15); color: var(--green); }
-        .badge-red { background: rgba(248, 81, 73, 0.15); color: var(--red); }
-        .badge-orange { background: rgba(210, 153, 34, 0.15); color: var(--orange); }
-        .badge-purple { background: rgba(188, 140, 255, 0.15); color: var(--purple); }
-        .page { display: none; }
-        .page.active { display: block; }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 24px;
-        }
+
+        /* ─── Cards ─── */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
         .stat-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
+            border-radius: var(--radius);
+            padding: 18px 16px;
             text-align: center;
+            transition: border-color 0.2s;
         }
-        .stat-card .number { font-size: 28px; font-weight: 700; color: var(--accent); }
-        .stat-card .label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-        @media (max-width: 768px) {
-            .sidebar { display: none; }
-            .main { margin-left: 0; padding: 20px; }
+        .stat-card:hover { border-color: var(--accent); }
+        .stat-card .number { font-size: 26px; font-weight: 700; color: var(--accent); }
+        .stat-card .label { font-size: 11px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* ─── Health bars ─── */
+        .health-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+        .health-bar .label { width: 130px; font-size: 13px; color: var(--text-muted); }
+        .health-bar .bar { flex: 1; height: 22px; background: var(--surface); border-radius: 11px; overflow: hidden; border: 1px solid var(--border); }
+        .health-bar .fill { height: 100%; border-radius: 11px; transition: width 1s ease-out; }
+        .health-bar .score { font-size: 13px; font-weight: 600; width: 55px; text-align: right; font-family: 'SF Mono', monospace; }
+
+        /* ─── Badges ─── */
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .badge-green { background: rgba(63, 185, 80, 0.12); color: var(--green); }
+        .badge-red { background: rgba(248, 81, 73, 0.12); color: var(--red); }
+        .badge-orange { background: rgba(210, 153, 34, 0.12); color: var(--orange); }
+        .badge-purple { background: rgba(188, 140, 255, 0.12); color: var(--purple); }
+        .badge-blue { background: rgba(88, 166, 255, 0.12); color: var(--accent); }
+
+        /* ─── Feature grid ─── */
+        .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 20px 0; }
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .feature-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .feature-card .icon { font-size: 24px; margin-bottom: 8px; }
+        .feature-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .feature-card p { font-size: 12.5px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+
+        /* ─── SVG embed ─── */
+        .svg-embed { margin: 20px 0; border-radius: var(--radius); overflow: hidden; }
+        .svg-embed img { width: 100%; display: block; }
+
+        /* ─── Pages ─── */
+        .page { display: none; animation: fadeIn 0.2s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .mobile-header { display: flex; }
+            .main { margin-left: 0; padding: 68px 20px 40px; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .feature-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
+    <!-- Mobile header -->
+    <div class="mobile-header">
+        <button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
+        <span style="font-weight:700">Offplan<span style="color:var(--accent)">IQ</span></span>
+    </div>
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
     <div class="layout">
-        <div class="sidebar">
-            <h1>OffplanIQ</h1>
-            <div class="subtitle">Dubai Off-Plan Intelligence</div>
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <svg viewBox="0 0 32 32" fill="none"><defs><linearGradient id="sg" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient></defs><rect x="2" y="14" width="6" height="16" rx="1.5" fill="url(#sg)" opacity=".5"/><rect x="10" y="8" width="6" height="22" rx="1.5" fill="url(#sg)" opacity=".7"/><rect x="18" y="2" width="6" height="28" rx="1.5" fill="url(#sg)"/><rect x="26" y="10" width="6" height="20" rx="1.5" fill="url(#sg)" opacity=".6"/><path d="M5 22 L13 14 L21 6 L29 12" stroke="url(#sg)" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="21" cy="6" r="2.5" fill="#3b82f6"/></svg>
+                <div>
+                    <div class="title">Offplan<span>IQ</span></div>
+                </div>
+                <span class="version">v0.1</span>
+            </div>
             <nav>
                 <div class="section-title">Overview</div>
-                <a href="#" onclick="showPage('overview')" class="active" id="nav-overview">Dashboard</a>
-                <a href="#" onclick="showPage('plan')" id="nav-plan">Master Plan</a>
-                <a href="#" onclick="showPage('audit')" id="nav-audit">Vibe Audit</a>
+                <a href="#" onclick="go('overview')" class="active" id="nav-overview"><span class="icon">&#9733;</span> Dashboard</a>
+                <a href="#" onclick="go('plan')" id="nav-plan"><span class="icon">&#9654;</span> Master Plan</a>
+                <a href="#" onclick="go('audit')" id="nav-audit"><span class="icon">&#10003;</span> Vibe Audit</a>
 
                 <div class="section-title">Architecture</div>
-                <a href="#" onclick="showPage('system')" id="nav-system">System Architecture</a>
-                <a href="#" onclick="showPage('database')" id="nav-database">Database Schema</a>
-                <a href="#" onclick="showPage('dataflow')" id="nav-dataflow">Data Flow</a>
-                <a href="#" onclick="showPage('components')" id="nav-components">Component Tree</a>
+                <a href="#" onclick="go('system')" id="nav-system"><span class="icon">&#9881;</span> System Design</a>
+                <a href="#" onclick="go('database')" id="nav-database"><span class="icon">&#9881;</span> Database Schema</a>
+                <a href="#" onclick="go('dataflow')" id="nav-dataflow"><span class="icon">&#8644;</span> Data Flow</a>
+                <a href="#" onclick="go('components')" id="nav-components"><span class="icon">&#9638;</span> Components</a>
 
                 <div class="section-title">Product</div>
-                <a href="#" onclick="showPage('scoring')" id="nav-scoring">Scoring Algorithm</a>
-                <a href="#" onclick="showPage('irr')" id="nav-irr">IRR Calculator</a>
-                <a href="#" onclick="showPage('tiers')" id="nav-tiers">Subscription Tiers</a>
+                <a href="#" onclick="go('scoring')" id="nav-scoring"><span class="icon">&#9733;</span> Scoring Engine</a>
+                <a href="#" onclick="go('irr')" id="nav-irr"><span class="icon">&#37;</span> IRR Calculator</a>
+                <a href="#" onclick="go('tiers')" id="nav-tiers"><span class="icon">&#9830;</span> Tiers &amp; Pricing</a>
 
                 <div class="section-title">Operations</div>
-                <a href="#" onclick="showPage('pipeline')" id="nav-pipeline">Scraper Pipeline</a>
-                <a href="#" onclick="showPage('risks')" id="nav-risks">Risk Register</a>
-                <a href="#" onclick="showPage('roadmap')" id="nav-roadmap">Roadmap</a>
+                <a href="#" onclick="go('pipeline')" id="nav-pipeline"><span class="icon">&#8635;</span> Scraper Pipeline</a>
+                <a href="#" onclick="go('risks')" id="nav-risks"><span class="icon">&#9888;</span> Risk Register</a>
+                <a href="#" onclick="go('roadmap')" id="nav-roadmap"><span class="icon">&#128640;</span> Roadmap</a>
             </nav>
+            <div class="sidebar-footer">
+                <a href="https://github.com/vishalm/OffplanIQ" target="_blank">&#9733; GitHub Repository</a>
+                <a href="https://github.com/vishalm/OffplanIQ/blob/main/PLAN.md" target="_blank">&#9654; PLAN.md</a>
+                <a href="https://github.com/vishalm/OffplanIQ/blob/main/AUDIT.md" target="_blank">&#10003; AUDIT.md</a>
+            </div>
         </div>
 
         <div class="main">
-            <!-- OVERVIEW PAGE -->
+            <!-- ═══════════ OVERVIEW ═══════════ -->
             <div class="page active" id="page-overview">
                 <h1>OffplanIQ Documentation</h1>
-                <p>Dubai off-plan property intelligence SaaS. Tracks 142+ active projects with PSF history, sell-through velocity, IRR calculators, and developer scorecards.</p>
+                <p>Dubai off-plan property intelligence SaaS. Tracks 142+ active projects with PSF analytics, scoring engine, IRR calculators, and developer scorecards.</p>
 
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="number">57</div>
-                        <div class="label">Source Files</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number">~6.2K</div>
-                        <div class="label">Lines of Code</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number">11</div>
-                        <div class="label">DB Tables</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number">62/100</div>
-                        <div class="label">Health Score</div>
-                    </div>
+                    <div class="stat-card"><div class="number">57</div><div class="label">Source Files</div></div>
+                    <div class="stat-card"><div class="number">~6.2K</div><div class="label">Lines of Code</div></div>
+                    <div class="stat-card"><div class="number">166</div><div class="label">Tests Passing</div></div>
+                    <div class="stat-card"><div class="number">62/100</div><div class="label">Health Score</div></div>
                 </div>
 
                 <h2>Health Overview</h2>
-                <div class="health-bar">
-                    <div class="label">Architecture</div>
-                    <div class="bar"><div class="fill" style="width:78%;background:var(--green)"></div></div>
-                    <div class="score">78/100</div>
-                </div>
-                <div class="health-bar">
-                    <div class="label">Code Quality</div>
-                    <div class="bar"><div class="fill" style="width:58%;background:var(--orange)"></div></div>
-                    <div class="score">58/100</div>
-                </div>
-                <div class="health-bar">
-                    <div class="label">Test Coverage</div>
-                    <div class="bar"><div class="fill" style="width:0%;background:var(--red)"></div></div>
-                    <div class="score">0/100</div>
-                </div>
-                <div class="health-bar">
-                    <div class="label">Security</div>
-                    <div class="bar"><div class="fill" style="width:72%;background:var(--green)"></div></div>
-                    <div class="score">72/100</div>
-                </div>
-                <div class="health-bar">
-                    <div class="label">Performance</div>
-                    <div class="bar"><div class="fill" style="width:70%;background:var(--green)"></div></div>
-                    <div class="score">70/100</div>
-                </div>
-                <div class="health-bar">
-                    <div class="label">DX / Tooling</div>
-                    <div class="bar"><div class="fill" style="width:40%;background:var(--red)"></div></div>
-                    <div class="score">40/100</div>
-                </div>
-                <div class="health-bar">
-                    <div class="label">Documentation</div>
-                    <div class="bar"><div class="fill" style="width:88%;background:var(--green)"></div></div>
-                    <div class="score">88/100</div>
+                <div class="health-bar"><div class="label">Architecture</div><div class="bar"><div class="fill" style="width:78%;background:linear-gradient(90deg,#3b82f6,#22c55e)"></div></div><div class="score">78</div></div>
+                <div class="health-bar"><div class="label">Code Quality</div><div class="bar"><div class="fill" style="width:58%;background:linear-gradient(90deg,#f97316,#eab308)"></div></div><div class="score">58</div></div>
+                <div class="health-bar"><div class="label">Test Coverage</div><div class="bar"><div class="fill" style="width:2%;background:var(--red)"></div></div><div class="score">0</div></div>
+                <div class="health-bar"><div class="label">Security</div><div class="bar"><div class="fill" style="width:72%;background:linear-gradient(90deg,#3b82f6,#22c55e)"></div></div><div class="score">72</div></div>
+                <div class="health-bar"><div class="label">Performance</div><div class="bar"><div class="fill" style="width:70%;background:linear-gradient(90deg,#3b82f6,#22c55e)"></div></div><div class="score">70</div></div>
+                <div class="health-bar"><div class="label">DX / Tooling</div><div class="bar"><div class="fill" style="width:40%;background:linear-gradient(90deg,#f85149,#f97316)"></div></div><div class="score">40</div></div>
+                <div class="health-bar"><div class="label">Documentation</div><div class="bar"><div class="fill" style="width:88%;background:linear-gradient(90deg,#22c55e,#3fb950)"></div></div><div class="score">88</div></div>
+
+                <h2>Key Features</h2>
+                <div class="feature-grid">
+                    <div class="feature-card"><div class="icon">&#128202;</div><h4>Project Scoring (0-100)</h4><p>Weighted formula: sell-through (40%) + PSF momentum (30%) + developer (20%) + handover (10%). Fully explainable, no ML.</p></div>
+                    <div class="feature-card"><div class="icon">&#128200;</div><h4>IRR Calculator</h4><p>Compare payment plans side-by-side. See how down payment structure affects annualised returns. Sensitivity table with 8 scenarios.</p></div>
+                    <div class="feature-card"><div class="icon">&#128276;</div><h4>Real-time Alerts</h4><p>Score drops, PSF spikes, handover delays. Hourly checks via Edge Functions. Email + in-app notifications.</p></div>
+                    <div class="feature-card"><div class="icon">&#127970;</div><h4>Developer Scorecards</h4><p>RERA complaints, on-time delivery %, quality ratings, historical ROI. Know who builds on time.</p></div>
                 </div>
 
                 <h2>Tech Stack</h2>
                 <table>
                     <tr><th>Layer</th><th>Technology</th><th>Purpose</th></tr>
-                    <tr><td>Frontend</td><td>Next.js 14 (App Router)</td><td>RSC, file-based routing</td></tr>
-                    <tr><td>Database</td><td>Supabase (Postgres)</td><td>Auth + DB + Realtime + Edge Fns</td></tr>
-                    <tr><td>Styling</td><td>Tailwind CSS</td><td>Utility-first CSS</td></tr>
+                    <tr><td>Frontend</td><td>Next.js 14 (App Router)</td><td>Server Components, streaming SSR</td></tr>
+                    <tr><td>Database</td><td>Supabase (PostgreSQL + RLS)</td><td>Auth + DB + Realtime + Edge Fns</td></tr>
+                    <tr><td>Styling</td><td>Tailwind CSS</td><td>Utility-first, zero custom CSS</td></tr>
                     <tr><td>Charts</td><td>Recharts</td><td>PSF line charts</td></tr>
-                    <tr><td>Email</td><td>Resend + React Email</td><td>Transactional email</td></tr>
-                    <tr><td>Payments</td><td>Stripe</td><td>Subscriptions (AED)</td></tr>
+                    <tr><td>Payments</td><td>Stripe (AED)</td><td>Subscriptions + webhooks</td></tr>
+                    <tr><td>Email</td><td>Resend + React Email</td><td>Alerts + weekly digest</td></tr>
                     <tr><td>Scraping</td><td>Python + Playwright</td><td>DLD + Property Finder</td></tr>
-                    <tr><td>Hosting</td><td>Vercel + Railway</td><td>Web app + scraper</td></tr>
+                    <tr><td>CI/CD</td><td>GitHub Actions</td><td>166 tests on every push</td></tr>
+                    <tr><td>Hosting</td><td>Vercel + Railway</td><td>Web app + scraper cron</td></tr>
                 </table>
 
                 <h2>Critical Issues</h2>
                 <table>
-                    <tr><th>#</th><th>Issue</th><th>Severity</th></tr>
-                    <tr><td>1</td><td>DLD scraper selectors are placeholders — scraper won't work</td><td><span class="badge badge-red">P0</span></td></tr>
+                    <tr><th>#</th><th>Issue</th><th>Status</th></tr>
+                    <tr><td>1</td><td>DLD scraper selectors are placeholders</td><td><span class="badge badge-red">P0</span></td></tr>
                     <tr><td>2</td><td>PF scraper selectors are placeholders</td><td><span class="badge badge-red">P0</span></td></tr>
-                    <tr><td>3</td><td>Score algorithm duplicated (algorithm.ts + Edge Fn)</td><td><span class="badge badge-red">P0</span></td></tr>
-                    <tr><td>4</td><td>Broken import in algorithm.ts line 19</td><td><span class="badge badge-red">P0</span></td></tr>
-                    <tr><td>5</td><td>Zero test coverage</td><td><span class="badge badge-red">P0</span></td></tr>
-                    <tr><td>6</td><td>No ESLint/Prettier config</td><td><span class="badge badge-orange">P1</span></td></tr>
-                    <tr><td>7</td><td>No CI/CD pipeline</td><td><span class="badge badge-orange">P1</span></td></tr>
+                    <tr><td>3</td><td>Score algo duplicated in Edge Function</td><td><span class="badge badge-orange">Accepted</span></td></tr>
+                    <tr><td>4</td><td>Broken import in algorithm.ts</td><td><span class="badge badge-green">Fixed</span></td></tr>
+                    <tr><td>5</td><td>Zero test coverage</td><td><span class="badge badge-green">166 tests</span></td></tr>
+                    <tr><td>6</td><td>No ESLint/Prettier config</td><td><span class="badge badge-green">Added</span></td></tr>
+                    <tr><td>7</td><td>Price parser "to" bug</td><td><span class="badge badge-green">Fixed</span></td></tr>
                 </table>
             </div>
 
-            <!-- PLAN PAGE -->
+            <!-- ═══════════ PLAN ═══════════ -->
             <div class="page" id="page-plan">
                 <h1>Master Plan (Day 1)</h1>
-                <blockquote>6-week plan: scaffolded codebase to production with 10 beta users, 3 paying</blockquote>
+                <blockquote>6 weeks: scaffolded codebase to production with 10 beta users, 3 paying</blockquote>
 
-                <h2>Week-by-Week Timeline</h2>
-                <div class="mermaid">
+                <h2>Timeline</h2>
+                <div class="mermaid-wrapper"><pre class="mermaid">
 gantt
-    title OffplanIQ 6-Week Build Plan
+    title OffplanIQ 6-Week Build
     dateFormat YYYY-MM-DD
-    section Week 1: Data Pipeline
-        Supabase setup + migrations      :a1, 2026-04-07, 2d
-        DLD scraper (fix selectors)       :a2, 2026-04-09, 3d
-        Edge Functions deploy             :a3, 2026-04-12, 1d
-        Railway deploy + cron             :a4, 2026-04-13, 1d
+    section Week 1: Pipeline
+        Supabase + migrations      :a1, 2026-04-07, 2d
+        DLD scraper fix             :a2, 2026-04-09, 3d
+        Edge Functions              :a3, 2026-04-12, 2d
     section Week 2: Dashboard
-        Auth + middleware                 :b1, 2026-04-14, 2d
-        Dashboard UI                     :b2, 2026-04-16, 3d
-        Vercel deploy                    :b3, 2026-04-19, 1d
-    section Week 3: Project Detail
-        Project page + IRR calculator    :c1, 2026-04-21, 4d
-        Watchlist + developer card       :c2, 2026-04-25, 2d
+        Auth + middleware           :b1, 2026-04-14, 2d
+        Dashboard UI                :b2, 2026-04-16, 3d
+        Vercel deploy               :b3, 2026-04-19, 1d
+    section Week 3: Detail
+        Project page + IRR          :c1, 2026-04-21, 4d
+        Watchlist + dev card        :c2, 2026-04-25, 2d
     section Week 4: Alerts
-        Alert system                     :d1, 2026-04-28, 3d
-        Weekly digest                    :d2, 2026-05-01, 3d
+        Alert system                :d1, 2026-04-28, 3d
+        Weekly digest               :d2, 2026-05-01, 3d
     section Week 5: Billing
-        Stripe integration               :e1, 2026-05-05, 4d
-        Paywall gates + testing          :e2, 2026-05-09, 2d
+        Stripe integration          :e1, 2026-05-05, 4d
+        Paywall gates               :e2, 2026-05-09, 2d
     section Week 6: Launch
-        Pre-launch checklist             :f1, 2026-05-12, 2d
-        Launch + marketing               :f2, 2026-05-14, 4d
-                </div>
+        Pre-launch checklist        :f1, 2026-05-12, 2d
+        Launch + marketing          :f2, 2026-05-14, 4d
+                </pre></div>
 
-                <h2>Success Metrics</h2>
+                <h2>Success Targets</h2>
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="number">10</div>
-                        <div class="label">Beta Users (Week 6)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number">3</div>
-                        <div class="label">Paying Users</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number">142+</div>
-                        <div class="label">Projects Tracked</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number">AED 2,250+</div>
-                        <div class="label">Target MRR</div>
-                    </div>
+                    <div class="stat-card"><div class="number">10</div><div class="label">Beta Users</div></div>
+                    <div class="stat-card"><div class="number">3</div><div class="label">Paying Users</div></div>
+                    <div class="stat-card"><div class="number">142+</div><div class="label">Projects Tracked</div></div>
+                    <div class="stat-card"><div class="number">2,250+</div><div class="label">Target MRR (AED)</div></div>
                 </div>
 
                 <h2>Revenue Model</h2>
                 <table>
                     <tr><th>Plan</th><th>Price</th><th>Features</th></tr>
-                    <tr><td><span class="badge badge-green">Free</span></td><td>AED 0</td><td>Top 20 projects, 30-day PSF lag, no IRR/alerts</td></tr>
-                    <tr><td><span class="badge badge-purple">Investor</span></td><td>AED 750/mo</td><td>All projects, live data, IRR calculator, alerts, digest</td></tr>
-                    <tr><td><span class="badge badge-orange">Agency</span></td><td>AED 3,500/mo</td><td>Everything + 5 seats + API + white-label PDFs</td></tr>
+                    <tr><td><span class="badge badge-green">Free</span></td><td>AED 0</td><td>Top 20 projects, 30-day PSF lag</td></tr>
+                    <tr><td><span class="badge badge-purple">Investor</span></td><td>AED 750/mo</td><td>All projects, live data, IRR, alerts</td></tr>
+                    <tr><td><span class="badge badge-blue">Agency</span></td><td>AED 3,500/mo</td><td>5 seats + API + white-label PDFs</td></tr>
                 </table>
 
-                <h2>What Exists vs What Needs Work</h2>
-                <div class="mermaid">
-pie title Codebase Readiness
+                <h2>Readiness</h2>
+                <div class="mermaid-wrapper"><pre class="mermaid">
+pie title Codebase Status
     "Scaffolded + Ready" : 70
-    "Needs Real Data (scrapers)" : 15
+    "Needs Real Data" : 15
     "Needs Tests" : 10
     "Needs DX Tooling" : 5
-                </div>
+                </pre></div>
             </div>
 
-            <!-- AUDIT PAGE -->
+            <!-- ═══════════ AUDIT ═══════════ -->
             <div class="page" id="page-audit">
                 <h1>Vibe Audit Report</h1>
-                <blockquote>Overall Health Score: 62/100 — Strong architecture, zero test coverage</blockquote>
+                <blockquote>Overall Health: 62/100 — Strong architecture, improving test coverage</blockquote>
 
-                <h2>Bug Report</h2>
+                <h2>Bugs Found &amp; Fixed</h2>
                 <table>
-                    <tr><th>Bug</th><th>File</th><th>Fix</th></tr>
-                    <tr><td>Broken import path</td><td><code>algorithm.ts:19</code></td><td>Change <code>'../types'</code> to <code>'@offplaniq/shared'</code></td></tr>
-                    <tr><td>DLD selectors are stubs</td><td><code>scrapers/dld.py</code></td><td>Inspect live DLD site</td></tr>
-                    <tr><td>PF selectors are stubs</td><td><code>scrapers/property_finder.py</code></td><td>Inspect live PF site</td></tr>
+                    <tr><th>Bug</th><th>File</th><th>Status</th></tr>
+                    <tr><td>Broken import path</td><td><code>algorithm.ts:19</code></td><td><span class="badge badge-green">Fixed</span></td></tr>
+                    <tr><td>Price parser "to" split bug</td><td><code>parsers/price.py</code></td><td><span class="badge badge-green">Fixed</span></td></tr>
+                    <tr><td>DLD selectors are stubs</td><td><code>scrapers/dld.py</code></td><td><span class="badge badge-red">Needs live inspect</span></td></tr>
+                    <tr><td>PF selectors are stubs</td><td><code>scrapers/property_finder.py</code></td><td><span class="badge badge-red">Needs live inspect</span></td></tr>
                 </table>
 
                 <h2>DRY Violations</h2>
                 <table>
-                    <tr><th>What</th><th>Where</th><th>Duplicated Lines</th></tr>
-                    <tr><td>Scoring algorithm</td><td><code>algorithm.ts</code> + <code>score-recalculator/index.ts</code></td><td>~80 lines</td></tr>
-                    <tr><td>Alert type color mapping</td><td><code>AlertFeed.tsx</code> + <code>alert-dispatcher</code></td><td>~20 lines</td></tr>
+                    <tr><th>What</th><th>Where</th><th>Lines</th></tr>
+                    <tr><td>Scoring algorithm</td><td><code>algorithm.ts</code> + <code>score-recalculator</code></td><td>~80</td></tr>
                 </table>
 
                 <h2>Missing Edge Cases</h2>
@@ -404,39 +438,37 @@ pie title Codebase Readiness
                     <tr><td>Stripe webhook</td><td>No idempotency check</td></tr>
                 </table>
 
-                <h2>Security Posture</h2>
+                <h2>Security</h2>
                 <table>
                     <tr><th>Check</th><th>Status</th></tr>
                     <tr><td>RLS on all tables</td><td><span class="badge badge-green">Pass</span></td></tr>
                     <tr><td>Service key isolated</td><td><span class="badge badge-green">Pass</span></td></tr>
                     <tr><td>Webhook signature verification</td><td><span class="badge badge-green">Pass</span></td></tr>
-                    <tr><td>.env.local gitignored</td><td><span class="badge badge-green">Pass</span></td></tr>
                     <tr><td>No hardcoded secrets</td><td><span class="badge badge-green">Pass</span></td></tr>
                     <tr><td>API rate limiting</td><td><span class="badge badge-red">Missing</span></td></tr>
-                    <tr><td>CSRF protection</td><td><span class="badge badge-orange">Partial</span></td></tr>
                 </table>
 
-                <h2>Test Coverage Gap</h2>
-                <div class="mermaid">
+                <h2>Test Priority</h2>
+                <div class="mermaid-wrapper"><pre class="mermaid">
 pie title What Needs Tests First
-    "Scoring Algorithm" : 30
-    "IRR Calculator" : 25
-    "Shared Utils" : 20
+    "Scoring Algorithm (31 done)" : 30
+    "IRR Calculator (20 done)" : 25
+    "Shared Utils (44 done)" : 20
     "API Routes" : 15
     "Components" : 10
-                </div>
+                </pre></div>
             </div>
 
-            <!-- SYSTEM ARCHITECTURE PAGE -->
+            <!-- ═══════════ SYSTEM ═══════════ -->
             <div class="page" id="page-system">
                 <h1>System Architecture</h1>
-                <div class="mermaid">
+                <div class="mermaid-wrapper"><pre class="mermaid">
 flowchart TB
     subgraph Sources["Data Sources"]
         DLD["DLD Website"]
         PF["Property Finder"]
     end
-    subgraph Scraper["Python Scrapers — Railway"]
+    subgraph Scraper["Python Scrapers - Railway"]
         DLD_S["dld.py"]
         PF_S["property_finder.py"]
         MATCH["match_transactions.py"]
@@ -444,9 +476,9 @@ flowchart TB
     subgraph Supa["Supabase"]
         DB[(PostgreSQL)]
         AUTH["Auth"]
-        EF["Edge Functions"]
+        EF["Edge Functions x4"]
     end
-    subgraph Web["Next.js 14 — Vercel"]
+    subgraph Web["Next.js 14 - Vercel"]
         SC["Server Components"]
         CC["Client Components"]
         API["API Routes"]
@@ -458,150 +490,66 @@ flowchart TB
     DLD --> DLD_S --> DB
     PF --> PF_S --> DB
     MATCH --> DB
-    EF --> DB
-    EF --> RESEND
+    EF --> DB & RESEND
     DB --> SC
     AUTH --> Web
-    API --> STRIPE
-    STRIPE --> API
-                </div>
+    API <--> STRIPE
+                </pre></div>
 
-                <h2>Deployment Topology</h2>
-                <div class="mermaid">
+                <h2>Deployment</h2>
+                <div class="mermaid-wrapper"><pre class="mermaid">
 graph LR
-    subgraph Vercel
-        WEB["Next.js App\n(SSR + API Routes)"]
-    end
-    subgraph Supabase_Cloud["Supabase Cloud"]
-        PG["PostgreSQL"]
-        EF["Edge Functions x4"]
-        SA["Auth"]
-        RT["Realtime"]
-    end
-    subgraph Railway
-        SCR["Python Scraper\n(Nightly cron)"]
-    end
-    subgraph Stripe_Cloud["Stripe"]
-        PAY["Subscriptions"]
-    end
-    subgraph Resend_Cloud["Resend"]
-        EMAIL["Email API"]
-    end
-    WEB <--> PG
-    WEB <--> SA
-    WEB --> PAY
-    PAY --> WEB
-    SCR --> PG
-    SCR --> EF
-    EF --> PG
-    EF --> EMAIL
-                </div>
+    V["Vercel<br/>Next.js SSR"] <-->|SDK| S["Supabase Cloud<br/>PostgreSQL + Auth + Edge Fns"]
+    R["Railway<br/>Python Scraper"] -->|REST| S
+    S -->|webhooks| RE["Resend<br/>Email"]
+    V <-->|webhooks| ST["Stripe<br/>Payments"]
+                </pre></div>
 
                 <h2>Data Freshness</h2>
                 <table>
                     <tr><th>Data</th><th>Source</th><th>Frequency</th><th>Lag</th></tr>
                     <tr><td>DLD Transactions</td><td>dubailand.gov.ae</td><td>Daily 2am UAE</td><td>T+1</td></tr>
                     <tr><td>Property Listings</td><td>Property Finder</td><td>Every 6h</td><td>~1h</td></tr>
-                    <tr><td>PSF History</td><td>Computed</td><td>After scraper</td><td>T+1</td></tr>
-                    <tr><td>Scores</td><td>Edge Function</td><td>After scraper</td><td>T+1</td></tr>
+                    <tr><td>Project Scores</td><td>Edge Function</td><td>After scraper</td><td>T+1</td></tr>
                     <tr><td>Alerts</td><td>Edge Function</td><td>Hourly</td><td>&lt;1h</td></tr>
                     <tr><td>Weekly Digest</td><td>Edge Function</td><td>Sunday 9am UAE</td><td>Weekly</td></tr>
                 </table>
             </div>
 
-            <!-- DATABASE PAGE -->
+            <!-- ═══════════ DATABASE ═══════════ -->
             <div class="page" id="page-database">
                 <h1>Database Schema</h1>
-                <div class="mermaid">
+                <p>11 tables, all with RLS. Public read for market data, user-scoped for personal data.</p>
+                <div class="mermaid-wrapper"><pre class="mermaid">
 erDiagram
-    developers ||--o{ projects : "has many"
+    developers ||--o{ projects : "builds"
     projects ||--o{ psf_history : "tracks"
     projects ||--o{ payment_plans : "offers"
     projects ||--o{ dld_transactions : "matched"
-    projects ||--o{ watchlist : "watched"
-    projects ||--o{ alerts_log : "triggers"
-    projects ||--o{ score_snapshots : "snapshotted"
+    projects ||--o{ score_snapshots : "scored"
     user_profiles ||--o{ watchlist : "watches"
     user_profiles ||--o{ alerts_log : "receives"
     user_profiles ||--|{ alert_preferences : "configures"
+    projects ||--o{ watchlist : "watched"
 
-    developers {
-        uuid id PK
-        string name
-        string slug UK
-        int developer_score
-        int on_time_delivery_pct
-        int rera_complaints_count
-    }
-    projects {
-        uuid id PK
-        uuid developer_id FK
-        string name
-        string area
-        enum status
-        int current_psf
-        int score
-        jsonb score_breakdown
-    }
-    psf_history {
-        uuid id PK
-        uuid project_id FK
-        date recorded_date
-        int psf
-        string source
-    }
-    payment_plans {
-        uuid id PK
-        uuid project_id FK
-        string name
-        float down_payment_pct
-        float construction_pct
-    }
-    dld_transactions {
-        uuid id PK
-        uuid project_id FK
-        date transaction_date
-        int transaction_value
-        int psf
-    }
-    user_profiles {
-        uuid id PK
-        string email
-        enum subscription_tier
-        string stripe_customer_id
-    }
-    watchlist {
-        uuid id PK
-        uuid user_id FK
-        uuid project_id FK
-    }
-    alerts_log {
-        uuid id PK
-        uuid user_id FK
-        enum alert_type
-        string title
-        bool is_read
-    }
-    alert_preferences {
-        uuid user_id PK
-        int score_drop_threshold
-        bool email_alerts
-        bool weekly_digest
-    }
-    score_snapshots {
-        uuid id PK
-        uuid project_id FK
-        date score_date
-        int score
-    }
-                </div>
+    developers { uuid id PK string name int developer_score }
+    projects { uuid id PK string name string area int score int current_psf }
+    psf_history { uuid id PK date recorded_date int psf string source }
+    payment_plans { uuid id PK string name float down_payment_pct }
+    dld_transactions { uuid id PK date transaction_date int transaction_value }
+    user_profiles { uuid id PK string email enum subscription_tier }
+    watchlist { uuid id PK uuid user_id uuid project_id }
+    alerts_log { uuid id PK enum alert_type string title bool is_read }
+    alert_preferences { uuid user_id PK bool email_alerts bool weekly_digest }
+    score_snapshots { uuid id PK date score_date int score }
+                </pre></div>
 
                 <h2>RLS Policies</h2>
                 <table>
                     <tr><th>Table</th><th>Read</th><th>Write</th></tr>
-                    <tr><td>projects, developers, psf_history, payment_plans, score_snapshots</td><td><span class="badge badge-green">Public</span></td><td>Service role only</td></tr>
-                    <tr><td>user_profiles, watchlist, alert_preferences, alerts_log</td><td>Own user only</td><td>Own user only</td></tr>
-                    <tr><td>dld_transactions</td><td><span class="badge badge-green">Public</span></td><td>Service role only</td></tr>
+                    <tr><td>projects, developers, psf_history, payment_plans</td><td><span class="badge badge-green">Public</span></td><td>Service role only</td></tr>
+                    <tr><td>user_profiles, watchlist, alert_preferences</td><td>Own user</td><td>Own user</td></tr>
+                    <tr><td>alerts_log</td><td>Own user</td><td>Service role only</td></tr>
                 </table>
 
                 <h2>Enums</h2>
@@ -610,363 +558,286 @@ erDiagram
                     <tr><td>project_status</td><td>pre_launch, active, sold_out, completed, delayed, cancelled</td></tr>
                     <tr><td>handover_status</td><td>on_track, at_risk, delayed, completed</td></tr>
                     <tr><td>unit_type</td><td>studio, 1br, 2br, 3br, 4br, penthouse, villa, townhouse</td></tr>
-                    <tr><td>alert_type</td><td>score_drop, score_rise, new_launch, handover_delay, psf_spike, psf_drop, sellthrough_stall, developer_flag</td></tr>
+                    <tr><td>alert_type</td><td>score_drop, score_rise, new_launch, handover_delay, psf_spike, psf_drop, sellthrough_stall</td></tr>
                     <tr><td>subscription_tier</td><td>free, investor, agency</td></tr>
                 </table>
             </div>
 
-            <!-- DATA FLOW PAGE -->
+            <!-- ═══════════ DATA FLOW ═══════════ -->
             <div class="page" id="page-dataflow">
                 <h1>Data Flow Pipeline</h1>
-                <div class="mermaid">
+                <div class="mermaid-wrapper"><pre class="mermaid">
 sequenceDiagram
-    participant CRON as Railway Cron
-    participant DLD as DLD Scraper
-    participant PF as PF Scraper
-    participant MATCH as Matcher
+    participant R as Railway Cron
+    participant S as Scrapers
+    participant M as Matcher
     participant DB as Supabase DB
     participant PSF as psf-updater
-    participant SCORE as score-recalculator
-    participant ALERT as alert-dispatcher
-    participant USER as User
+    participant SC as score-recalculator
+    participant AL as alert-dispatcher
+    participant U as Users
 
-    Note over CRON: Nightly 02:00 UTC
-    CRON->>DLD: Run scraper
-    DLD->>DB: Upsert transactions
-    CRON->>PF: Run scraper
-    PF->>DB: Upsert listings
-    CRON->>MATCH: Fuzzy match
-    MATCH->>DB: Link txns to projects
-    CRON->>PSF: Trigger update
-    PSF->>DB: Update current_psf
-    CRON->>SCORE: Trigger recalc
-    SCORE->>DB: Update scores
+    R->>S: Nightly 02:00 UTC
+    S->>DB: Upsert DLD + PF data
+    R->>M: Fuzzy match txns
+    M->>DB: Link to projects
+    R->>PSF: Trigger
+    PSF->>DB: Update PSF
+    R->>SC: Trigger
+    SC->>DB: Update scores
 
-    Note over ALERT: Hourly via pg_cron
-    ALERT->>DB: Check score changes
-    ALERT->>USER: Send email alerts
-                </div>
-
-                <h2>Scraper Pipeline Detail</h2>
-                <div class="mermaid">
-flowchart LR
-    A["main.py\nOrchestrator"] --> B["dld.py\nPlaywright"]
-    A --> C["property_finder.py\nPlaywright + requests"]
-    B --> D["dld_transactions\n(batch 100)"]
-    C --> E["projects +\npayment_plans"]
-    A --> F["match_transactions.py\nFuzzy word overlap"]
-    F --> G["Set project_id\non matched txns"]
-    A --> H["POST psf-updater\nWeighted avg PSF"]
-    A --> I["POST score-recalculator\nFull score update"]
-                </div>
+    Note over AL: Hourly via pg_cron
+    AL->>DB: Diff scores
+    AL->>U: Email alerts
+                </pre></div>
 
                 <h2>Alert Pipeline</h2>
-                <div class="mermaid">
+                <div class="mermaid-wrapper"><pre class="mermaid">
 flowchart TB
-    A["pg_cron (hourly)"] --> B["alert-dispatcher"]
-    B --> C["Fetch watchlists\n+ user prefs"]
-    B --> D["Fetch yesterday's\nscore snapshots"]
-    C --> E{Compare scores}
-    D --> E
-    E -->|"score dropped ≥ threshold"| F["Insert score_drop alert"]
-    E -->|"score rose ≥ threshold"| G["Insert score_rise alert"]
-    E -->|"handover delayed"| H["Insert handover_delay alert"]
-    F --> I{email_alerts?}
-    G --> I
-    H --> I
+    A["pg_cron hourly"] --> B["alert-dispatcher"]
+    B --> C["Fetch watchlists + prefs"]
+    B --> D["Fetch yesterday scores"]
+    C & D --> E{Compare}
+    E -->|drop| F["score_drop alert"]
+    E -->|rise| G["score_rise alert"]
+    E -->|delay| H["handover_delay alert"]
+    F & G & H --> I{email enabled?}
     I -->|Yes| J["Send via Resend"]
-    I -->|No| K["Alert in DB only"]
-                </div>
+    I -->|No| K["DB only"]
+                </pre></div>
             </div>
 
-            <!-- COMPONENTS PAGE -->
+            <!-- ═══════════ COMPONENTS ═══════════ -->
             <div class="page" id="page-components">
                 <h1>Component Architecture</h1>
-                <div class="mermaid">
+                <div class="mermaid-wrapper"><pre class="mermaid">
 graph TB
-    subgraph Layout
-        NAV["Nav.tsx\n(Server)"]
-        MENU["NavUserMenu.tsx\n(Client)"]
+    subgraph Server["Server Components"]
+        NAV[Nav] --> DASH[dashboard/page]
+        DASH --> MET[MarketMetrics]
+        DASH --> TAB[ProjectTable]
+        TAB --> BAD[ScoreBadge]
+        DET[projects/id/page] --> DEV[DeveloperCard]
+        ALP[alerts/page] --> ALF[AlertFeed]
+        ALP --> WLP[WatchlistPanel]
+        PB[PaywallBanner]
     end
-    subgraph S1["Screen 1: Dashboard"]
-        DASH["dashboard/page.tsx\n(Server)"]
-        MET["MarketMetrics\n(Server)"]
-        FIL["FilterBar\n(Client)"]
-        TAB["ProjectTable\n(Server)"]
-        BAD["ScoreBadge\n(Server)"]
-    end
-    subgraph S2["Screen 2: Project"]
-        DET["projects/[id]/page.tsx\n(Server)"]
-        CHR["PsfChart\n(Client)"]
-        IRR2["IrrCalculator\n(Client)"]
-        DEV["DeveloperCard\n(Server)"]
-        WLB["WatchlistButton\n(Client)"]
-    end
-    subgraph S3["Screen 3: Alerts"]
-        ALP["alerts/page.tsx\n(Server)"]
-        ALF["AlertFeed\n(Server)"]
-        WLP["WatchlistPanel\n(Server)"]
-        APF["AlertPrefsForm\n(Client)"]
-    end
-    subgraph Pay["Paywall"]
-        PB["PaywallBanner\n(Server)"]
-        UB["UpgradeButton\n(Client)"]
+    subgraph Client["Client Components"]
+        MENU[NavUserMenu]
+        FIL[FilterBar]
+        IRR2[IrrCalculator]
+        WLB[WatchlistButton]
+        CHR[PsfChart]
+        APF[AlertPrefsForm]
+        UPG[UpgradeButton]
     end
     NAV --> MENU
-    DASH --> MET & FIL & TAB
-    TAB --> BAD
-    DET --> CHR & IRR2 & DEV & WLB
-    ALP --> ALF & WLP & APF
+    DASH --> FIL
+    DET --> CHR & IRR2 & WLB
+    ALP --> APF
     IRR2 -.-> PB
     DEV -.-> PB
-    PB --> UB
-                </div>
+    PB --> UPG
+                </pre></div>
 
-                <h2>Client vs Server Split</h2>
+                <h2>Server vs Client Split</h2>
                 <table>
                     <tr><th>Type</th><th>Components</th><th>Reason</th></tr>
-                    <tr><td><span class="badge badge-green">Server</span></td><td>Nav, ProjectTable, MarketMetrics, ScoreBadge, DeveloperCard, AlertFeed, WatchlistPanel, PaywallBanner, pages</td><td>Data fetching, no interactivity</td></tr>
-                    <tr><td><span class="badge badge-purple">Client</span></td><td>NavUserMenu, FilterBar, IrrCalculator, WatchlistButton, AlertPrefsForm, UpgradeButton, PsfChart</td><td>User interaction, state, browser APIs</td></tr>
+                    <tr><td><span class="badge badge-green">Server</span></td><td>Nav, ProjectTable, MarketMetrics, ScoreBadge, DeveloperCard, AlertFeed, WatchlistPanel, PaywallBanner</td><td>Data fetching, zero client JS</td></tr>
+                    <tr><td><span class="badge badge-purple">Client</span></td><td>NavUserMenu, FilterBar, IrrCalculator, WatchlistButton, PsfChart, AlertPrefsForm, UpgradeButton</td><td>Interactivity, state, browser APIs</td></tr>
                 </table>
 
                 <h2>Hooks</h2>
                 <table>
                     <tr><th>Hook</th><th>Purpose</th></tr>
-                    <tr><td><code>useProjects</code></td><td>Client-side project queries with filters, sort, limit</td></tr>
-                    <tr><td><code>useWatchlist</code></td><td>Optimistic watchlist toggle via API route</td></tr>
-                    <tr><td><code>useAlerts</code></td><td>Unread count + Supabase Realtime subscription</td></tr>
+                    <tr><td><code>useProjects</code></td><td>Client-side project queries with filters + sort</td></tr>
+                    <tr><td><code>useWatchlist</code></td><td>Optimistic watchlist toggle</td></tr>
+                    <tr><td><code>useAlerts</code></td><td>Unread count + Realtime subscription</td></tr>
                 </table>
             </div>
 
-            <!-- SCORING PAGE -->
+            <!-- ═══════════ SCORING ═══════════ -->
             <div class="page" id="page-scoring">
-                <h1>Scoring Algorithm</h1>
+                <h1>Scoring Engine</h1>
                 <blockquote>Weighted formula. Fully explainable. No ML. Investors trust it because they understand it.</blockquote>
 
-                <div class="mermaid">
+                <div class="svg-embed"><img src="https://raw.githubusercontent.com/vishalm/OffplanIQ/main/docs/assets/score-formula.svg" alt="Score Formula" onerror="this.style.display='none'"/></div>
+
+                <div class="mermaid-wrapper"><pre class="mermaid">
 graph TB
-    subgraph Formula["Score = Sell-through + PSF Delta + Developer + Handover"]
-        ST["Sell-through\n0-40 pts (40%)"]
-        PSF2["PSF 6m Delta\n0-30 pts (30%)"]
-        DEV2["Developer\n0-20 pts (20%)"]
-        HO2["Handover\n0-10 pts (10%)"]
-    end
-    ST --> T["Total Score\n0-100"]
-    PSF2 --> T
-    DEV2 --> T
-    HO2 --> T
+    ST["Sell-through<br/>0-40 pts"] --> T["Total 0-100"]
+    PSF2["PSF Delta 6m<br/>0-30 pts"] --> T
+    DEV2["Developer<br/>0-20 pts"] --> T
+    HO2["Handover<br/>0-10 pts"] --> T
     T --> E2["85+: Excellent"]
     T --> G2["70-84: Good"]
     T --> W2["55-69: Watch"]
     T --> C2["40-54: Caution"]
     T --> AV2["0-39: Avoid"]
-                </div>
+                </pre></div>
 
-                <h2>Sell-through Component (0-40 pts)</h2>
+                <h2>Sell-through (0-40 pts)</h2>
                 <table>
-                    <tr><th>Sell-through %</th><th>Points</th></tr>
-                    <tr><td>90%+</td><td>40</td></tr>
-                    <tr><td>75-89%</td><td>36</td></tr>
-                    <tr><td>60-74%</td><td>30</td></tr>
-                    <tr><td>45-59%</td><td>24</td></tr>
-                    <tr><td>30-44%</td><td>16</td></tr>
-                    <tr><td>15-29%</td><td>10</td></tr>
-                    <tr><td>0-14%</td><td>floor(pct/15 * 10)</td></tr>
+                    <tr><th>Sell-through %</th><th>Points</th><th>Signal</th></tr>
+                    <tr><td>90%+</td><td>40</td><td>Near sellout</td></tr>
+                    <tr><td>75-89%</td><td>36</td><td>Strong demand</td></tr>
+                    <tr><td>60-74%</td><td>30</td><td>Healthy</td></tr>
+                    <tr><td>45-59%</td><td>24</td><td>Average</td></tr>
+                    <tr><td>30-44%</td><td>16</td><td>Slow</td></tr>
+                    <tr><td>15-29%</td><td>10</td><td>Concerning</td></tr>
+                    <tr><td>0-14%</td><td>scaled</td><td>Weak</td></tr>
                 </table>
 
-                <h2>PSF Delta Component (0-30 pts)</h2>
-                <p>Compares current PSF to PSF from 6 months ago. Neutral (15 pts) if fewer than 2 data points.</p>
+                <h2>PSF Delta (0-30 pts)</h2>
                 <table>
                     <tr><th>6m Change</th><th>Points</th></tr>
-                    <tr><td>+20%+</td><td>30</td></tr>
-                    <tr><td>+15-19%</td><td>27</td></tr>
-                    <tr><td>+10-14%</td><td>24</td></tr>
-                    <tr><td>+5-9%</td><td>18</td></tr>
-                    <tr><td>0-4%</td><td>12</td></tr>
-                    <tr><td>-3 to -1%</td><td>8</td></tr>
-                    <tr><td>-7 to -4%</td><td>4</td></tr>
+                    <tr><td>+20%+</td><td>30</td></tr><tr><td>+15-19%</td><td>27</td></tr>
+                    <tr><td>+10-14%</td><td>24</td></tr><tr><td>+5-9%</td><td>18</td></tr>
+                    <tr><td>0-4%</td><td>12</td></tr><tr><td>-3 to -1%</td><td>8</td></tr>
                     <tr><td>Below -7%</td><td>0</td></tr>
                 </table>
 
-                <h2>Developer Component (0-20 pts)</h2>
-                <p><code>round(developer_score / 100 * 20)</code> — Linear mapping. Unknown developer gets 10 (neutral).</p>
+                <h2>Developer (0-20 pts)</h2>
+                <p><code>round(developer_score / 100 * 20)</code> - Linear. Unknown = 10 (neutral).</p>
 
-                <h2>Handover Component (0-10 pts)</h2>
+                <h2>Handover (0-10 pts)</h2>
                 <table>
                     <tr><th>Status</th><th>Points</th></tr>
                     <tr><td>On track / Completed</td><td>10</td></tr>
                     <tr><td>At risk</td><td>6</td></tr>
-                    <tr><td>Delayed ≤90 days</td><td>4</td></tr>
-                    <tr><td>Delayed ≤180 days</td><td>2</td></tr>
-                    <tr><td>Delayed >180 days</td><td>0</td></tr>
+                    <tr><td>Delayed 90d</td><td>4</td></tr>
+                    <tr><td>Delayed 180d</td><td>2</td></tr>
+                    <tr><td>Delayed 180d+</td><td>0</td></tr>
                 </table>
             </div>
 
-            <!-- IRR PAGE -->
+            <!-- ═══════════ IRR ═══════════ -->
             <div class="page" id="page-irr">
                 <h1>IRR Calculator</h1>
-                <blockquote>Simplified annualised ROI on cash invested during construction. Not full XIRR. Clearly labelled as estimate.</blockquote>
+                <blockquote>Simplified annualised ROI on cash invested during construction. The key paid feature.</blockquote>
 
-                <div class="mermaid">
+                <div class="mermaid-wrapper"><pre class="mermaid">
 flowchart LR
-    A["Inputs"] --> B["Calculate"]
-    B --> C["Output"]
+    A["Unit Price"] --> C["IRR Engine"]
+    B["Exit PSF"] --> C
+    D["Hold Years"] --> C
+    E["Payment Plan"] --> C
+    C --> F["Estimated IRR %"]
+    C --> G["Net Gain AED"]
+    C --> H["Sensitivity x8"]
+                </pre></div>
 
-    A --> A1["Unit Price (AED)"]
-    A --> A2["Exit PSF (AED/sqft)"]
-    A --> A3["Hold Years"]
-    A --> A4["Payment Plan"]
-
-    B --> B1["exit_value = sqft * exit_psf"]
-    B --> B2["cash_at_risk = down + construction %"]
-    B --> B3["total_invested = price * cash_at_risk"]
-    B --> B4["net_gain = exit_value - price"]
-    B --> B5["IRR = (1 + gain/invested)^(1/years) - 1"]
-
-    C --> C1["Estimated IRR %"]
-    C --> C2["Total Invested"]
-    C --> C3["Net Gain"]
-                </div>
-
-                <h2>Key Insight: Payment Plan Matters</h2>
-                <p>Lower down payment + construction % = less cash at risk = higher IRR on the same property. This is why comparing payment plans is the killer feature.</p>
+                <h2>Key Insight</h2>
+                <p>Lower down payment = less cash at risk = higher IRR. Comparing payment plans is the killer feature because the same property can have wildly different returns depending on the payment structure.</p>
 
                 <h2>Sensitivity Table</h2>
-                <p>Shows IRR at 8 exit PSF scenarios: -10%, -5%, 0%, +5%, +10%, +15%, +20%, +30% of current PSF.</p>
+                <p>8 exit PSF scenarios: -10%, -5%, 0%, +5%, +10%, +15%, +20%, +30% of current PSF. Shows IRR and gain at each level.</p>
             </div>
 
-            <!-- TIERS PAGE -->
+            <!-- ═══════════ TIERS ═══════════ -->
             <div class="page" id="page-tiers">
                 <h1>Subscription Tiers</h1>
-
-                <div class="mermaid">
+                <div class="mermaid-wrapper"><pre class="mermaid">
 graph LR
-    F["Free\nAED 0"] --> I["Investor\nAED 750/mo"]
-    I --> A2["Agency\nAED 3,500/mo"]
-                </div>
-
+    F["Free<br/>AED 0"] --> I["Investor<br/>AED 750/mo"]
+    I --> A2["Agency<br/>AED 3,500/mo"]
+                </pre></div>
                 <h2>Feature Matrix</h2>
                 <table>
                     <tr><th>Feature</th><th>Free</th><th>Investor</th><th>Agency</th></tr>
-                    <tr><td>Projects visible</td><td>Top 20</td><td>All 142+</td><td>All 142+</td></tr>
-                    <tr><td>PSF data freshness</td><td>30-day lag</td><td>Live (T+1)</td><td>Live (T+1)</td></tr>
-                    <tr><td>IRR calculator</td><td>Paywalled</td><td>Yes</td><td>Yes</td></tr>
-                    <tr><td>Developer scorecard</td><td>Paywalled</td><td>Yes</td><td>Yes</td></tr>
-                    <tr><td>Score breakdown</td><td>No</td><td>Yes</td><td>Yes</td></tr>
-                    <tr><td>Alerts</td><td>No</td><td>Yes</td><td>Yes</td></tr>
-                    <tr><td>Weekly digest</td><td>No</td><td>Yes</td><td>Yes</td></tr>
-                    <tr><td>API access</td><td>No</td><td>No</td><td>Yes</td></tr>
-                    <tr><td>White-label PDFs</td><td>No</td><td>No</td><td>Yes</td></tr>
+                    <tr><td>Projects</td><td>Top 20</td><td>All 142+</td><td>All 142+</td></tr>
+                    <tr><td>PSF data</td><td>30-day lag</td><td>Live</td><td>Live</td></tr>
+                    <tr><td>IRR calculator</td><td>-</td><td>Yes</td><td>Yes</td></tr>
+                    <tr><td>Alerts</td><td>-</td><td>Yes</td><td>Yes</td></tr>
+                    <tr><td>API access</td><td>-</td><td>-</td><td>Yes</td></tr>
                     <tr><td>Seats</td><td>1</td><td>1</td><td>5</td></tr>
                 </table>
 
                 <h2>Stripe Flow</h2>
-                <div class="mermaid">
+                <div class="mermaid-wrapper"><pre class="mermaid">
 sequenceDiagram
     participant U as User
     participant W as Web App
     participant S as Stripe
     participant DB as Database
-
-    U->>W: Click "Upgrade"
-    W->>S: Create Checkout Session
-    S-->>W: Checkout URL
-    W->>U: Redirect to Stripe
-    U->>S: Complete payment
-    S->>W: Webhook: checkout.session.completed
-    W->>DB: Update subscription_tier
-    S-->>U: Redirect to /settings/billing?success
-                </div>
+    U->>W: Click Upgrade
+    W->>S: Create Checkout
+    S-->>U: Hosted payment page
+    U->>S: Pay
+    S->>W: Webhook
+    W->>DB: Update tier
+    S-->>U: Redirect success
+                </pre></div>
             </div>
 
-            <!-- PIPELINE PAGE -->
+            <!-- ═══════════ PIPELINE ═══════════ -->
             <div class="page" id="page-pipeline">
                 <h1>Scraper Pipeline</h1>
-
-                <h2>Pipeline Orchestration</h2>
-                <div class="mermaid">
+                <div class="mermaid-wrapper"><pre class="mermaid">
 flowchart TB
-    A["main.py\nRailway cron: 02:00 UTC"] --> B["1. dld.py"]
-    B --> |"Playwright\n2s delay"| B1["Scrape DLD transactions"]
-    B1 --> B2["Batch upsert x100\nON CONFLICT UPDATE"]
+    A["main.py<br/>Railway 02:00 UTC"] --> B["1. dld.py<br/>Playwright"]
     A --> C["2. property_finder.py"]
-    C --> C1["Scrape listings\n+ payment plans"]
-    A --> D["3. match_transactions.py"]
-    D --> D1["Fuzzy match:\nword overlap ≥ 0.5"]
-    D1 --> D2["Set project_id\non unmatched txns"]
+    A --> D["3. match_transactions.py<br/>Fuzzy overlap >= 0.5"]
     A --> E["4. POST psf-updater"]
-    E --> E1["Weighted avg PSF\nfrom 30d DLD data"]
     A --> F["5. POST score-recalculator"]
-    F --> F1["Recalc all active\nproject scores"]
-                </div>
+    B --> B1["Batch upsert x100"]
+    D --> D1["Set project_id on txns"]
+                </pre></div>
 
-                <h2>Fuzzy Matching Logic</h2>
-                <p>Transaction matcher uses word-overlap scoring between DLD building names and project names:</p>
-                <ul>
-                    <li>Tokenize both names into significant words (skip "the", "tower", etc.)</li>
-                    <li>Compare first 4 words</li>
-                    <li>Pre-filter by area word overlap</li>
-                    <li>+0.3 boost for substring containment</li>
-                    <li>Minimum 0.5 confidence to accept</li>
-                </ul>
-
-                <h2>Current Status</h2>
+                <h2>Scraper Status</h2>
                 <table>
                     <tr><th>Scraper</th><th>Status</th></tr>
                     <tr><td>DLD</td><td><span class="badge badge-red">Placeholder selectors</span></td></tr>
                     <tr><td>Property Finder</td><td><span class="badge badge-red">Placeholder selectors</span></td></tr>
-                    <tr><td>Bayut</td><td><span class="badge badge-orange">Not started</span></td></tr>
                     <tr><td>Transaction Matcher</td><td><span class="badge badge-green">Logic complete</span></td></tr>
+                    <tr><td>Bayut</td><td><span class="badge badge-orange">Not started</span></td></tr>
                 </table>
             </div>
 
-            <!-- RISKS PAGE -->
+            <!-- ═══════════ RISKS ═══════════ -->
             <div class="page" id="page-risks">
                 <h1>Risk Register</h1>
                 <table>
                     <tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr>
-                    <tr><td>DLD changes DOM structure</td><td><span class="badge badge-red">High</span></td><td><span class="badge badge-red">Critical</span></td><td>Monitor failures, alert on 0 transactions</td></tr>
-                    <tr><td>Supabase free tier limits</td><td><span class="badge badge-orange">Medium</span></td><td><span class="badge badge-red">High</span></td><td>Upgrade to Pro ($25/mo) before launch</td></tr>
-                    <tr><td>Score formula perceived wrong</td><td><span class="badge badge-orange">Medium</span></td><td><span class="badge badge-orange">Medium</span></td><td>Show breakdown, publish methodology</td></tr>
-                    <tr><td>IP blocked by DLD/PF</td><td><span class="badge badge-orange">Medium</span></td><td><span class="badge badge-red">High</span></td><td>Rotate proxies, respect delays</td></tr>
-                    <tr><td>Stripe AED unavailable</td><td><span class="badge badge-green">Low</span></td><td><span class="badge badge-red">High</span></td><td>Fallback to USD</td></tr>
+                    <tr><td>DLD DOM changes</td><td><span class="badge badge-red">High</span></td><td><span class="badge badge-red">Critical</span></td><td>Monitor failures, alert on 0 txns</td></tr>
+                    <tr><td>Supabase limits</td><td><span class="badge badge-orange">Medium</span></td><td><span class="badge badge-red">High</span></td><td>Upgrade to Pro before launch</td></tr>
+                    <tr><td>Score distrust</td><td><span class="badge badge-orange">Medium</span></td><td><span class="badge badge-orange">Medium</span></td><td>Show breakdown, publish methodology</td></tr>
+                    <tr><td>IP blocked</td><td><span class="badge badge-orange">Medium</span></td><td><span class="badge badge-red">High</span></td><td>Rotate proxies, respect delays</td></tr>
                 </table>
             </div>
 
-            <!-- ROADMAP PAGE -->
+            <!-- ═══════════ ROADMAP ═══════════ -->
             <div class="page" id="page-roadmap">
                 <h1>Product Roadmap</h1>
-                <div class="mermaid">
+                <div class="mermaid-wrapper"><pre class="mermaid">
 timeline
-    title OffplanIQ Roadmap 2026
-    section Phase 1: Weeks 1-6
+    title OffplanIQ 2026
+    section Phase 1 Weeks 1-6
         Data Pipeline : DLD scraper, score engine
         Core Product : Dashboard, IRR, alerts
         Launch : 10 users, 3 paying
-    section Phase 2: Weeks 7-12
+    section Phase 2 Weeks 7-12
         More Data : PF scraper, RERA
         Features : Score trends, area comparison
-        Growth : Google OAuth, referrals
-    section Phase 3: Months 4-6
+    section Phase 3 Months 4-6
         Agency Tier : API, PDFs, multi-seat
         Scale : 100+ paying users
-    section Phase 4: Month 7+
-        Expansion : Saudi Arabia
+    section Phase 4 Month 7+
+        Saudi Arabia : Riyadh expansion
         Advanced : ML signals
-                </div>
+                </pre></div>
 
                 <h2>Post-Launch Backlog</h2>
                 <table>
-                    <tr><th>Feature</th><th>Priority</th><th>Notes</th></tr>
-                    <tr><td>Property Finder scraper</td><td><span class="badge badge-red">High</span></td><td>Extends coverage significantly</td></tr>
-                    <tr><td>RERA scraper</td><td><span class="badge badge-red">High</span></td><td>Authoritative handover data</td></tr>
-                    <tr><td>Score trend chart</td><td><span class="badge badge-orange">Medium</span></td><td>30-day score history</td></tr>
-                    <tr><td>Area comparison page</td><td><span class="badge badge-orange">Medium</span></td><td>PSF trends by area</td></tr>
-                    <tr><td>White-label PDFs</td><td><span class="badge badge-orange">Medium</span></td><td>Agency plan feature</td></tr>
-                    <tr><td>API v1</td><td><span class="badge badge-orange">Medium</span></td><td>Agency plan, OpenAPI</td></tr>
-                    <tr><td>Google OAuth</td><td><span class="badge badge-purple">Low</span></td><td>Reduces signup friction</td></tr>
-                    <tr><td>Mobile app</td><td><span class="badge badge-purple">Low</span></td><td>After 100+ paying users</td></tr>
-                    <tr><td>Saudi expansion</td><td><span class="badge badge-purple">Low</span></td><td>Riyadh market next</td></tr>
+                    <tr><th>Feature</th><th>Priority</th></tr>
+                    <tr><td>Property Finder scraper</td><td><span class="badge badge-red">High</span></td></tr>
+                    <tr><td>RERA scraper</td><td><span class="badge badge-red">High</span></td></tr>
+                    <tr><td>Score trend chart</td><td><span class="badge badge-orange">Medium</span></td></tr>
+                    <tr><td>Area comparison</td><td><span class="badge badge-orange">Medium</span></td></tr>
+                    <tr><td>API v1</td><td><span class="badge badge-orange">Medium</span></td></tr>
+                    <tr><td>Google OAuth</td><td><span class="badge badge-purple">Low</span></td></tr>
+                    <tr><td>Mobile app</td><td><span class="badge badge-purple">Low</span></td></tr>
+                    <tr><td>Saudi expansion</td><td><span class="badge badge-purple">Low</span></td></tr>
                 </table>
             </div>
         </div>
@@ -977,69 +848,58 @@ timeline
             startOnLoad: false,
             theme: 'dark',
             themeVariables: {
-                primaryColor: '#1f6feb',
+                primaryColor: '#1e3a5f',
                 primaryTextColor: '#e6edf3',
                 primaryBorderColor: '#30363d',
                 lineColor: '#58a6ff',
                 secondaryColor: '#161b22',
                 tertiaryColor: '#0d1117',
                 noteBkgColor: '#161b22',
-                noteTextColor: '#e6edf3',
-                actorBkg: '#161b22',
-                actorBorder: '#58a6ff',
-                actorTextColor: '#e6edf3',
-                signalColor: '#e6edf3',
-                labelBoxBkgColor: '#161b22',
-                labelBoxBorderColor: '#30363d',
-                labelTextColor: '#e6edf3',
-                loopTextColor: '#e6edf3',
-                activationBorderColor: '#58a6ff',
-                activationBkgColor: '#1f6feb',
-                sequenceNumberColor: '#0d1117'
+                noteTextColor: '#e6edf3'
             },
             flowchart: { curve: 'basis', htmlLabels: true },
-            er: { useMaxWidth: true },
-            sequence: { useMaxWidth: true, actorMargin: 50 },
-            gantt: { useMaxWidth: true }
+            sequence: { useMaxWidth: true, actorMargin: 40 }
         });
 
-        function showPage(name) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
-            document.getElementById('page-' + name).classList.add('active');
-            document.getElementById('nav-' + name).classList.add('active');
+        const rendered = new Set();
 
-            // Re-render mermaid diagrams in the newly visible page
+        async function renderPage(name) {
             const page = document.getElementById('page-' + name);
-            const mermaidDivs = page.querySelectorAll('.mermaid');
-            mermaidDivs.forEach(div => {
-                if (!div.getAttribute('data-processed')) {
-                    // Not yet rendered
-                }
-            });
-            renderMermaid();
-        }
-
-        async function renderMermaid() {
-            // Reset and re-render all mermaid diagrams
-            const elements = document.querySelectorAll('.mermaid');
-            for (const el of elements) {
-                if (el.getAttribute('data-processed') === 'true') continue;
-                const graphDefinition = el.textContent;
-                el.textContent = '';
+            if (!page || rendered.has(name)) return;
+            rendered.add(name);
+            const els = page.querySelectorAll('.mermaid');
+            for (const el of els) {
+                const def = el.textContent.trim();
+                if (!def) continue;
                 try {
-                    const { svg } = await mermaid.render('mermaid-' + Math.random().toString(36).substr(2, 9), graphDefinition);
-                    el.innerHTML = svg;
-                    el.setAttribute('data-processed', 'true');
+                    const id = 'm-' + Math.random().toString(36).slice(2, 9);
+                    const { svg } = await mermaid.render(id, def);
+                    el.outerHTML = '<div style="text-align:center">' + svg + '</div>';
                 } catch (e) {
-                    el.innerHTML = '<pre style="color:var(--red)">' + e.message + '</pre>';
-                    el.setAttribute('data-processed', 'true');
+                    el.innerHTML = '<pre style="color:var(--red);font-size:12px">' + e.message + '</pre>';
                 }
             }
         }
 
+        function go(name) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+            document.getElementById('page-' + name).classList.add('active');
+            document.getElementById('nav-' + name).classList.add('active');
+            renderPage(name);
+            // Close mobile sidebar
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('overlay').classList.remove('active');
+            window.scrollTo(0, 0);
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
         // Initial render
-        renderMermaid();
+        renderPage('overview');
     </script>
 </body>
 </html>

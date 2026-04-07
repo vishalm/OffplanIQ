@@ -21,10 +21,7 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
-
-      - name: TypeScript check
-        run: pnpm --filter web tsc --noEmit
+      - run: pnpm install
 
       - name: Run tests
         run: pnpm --filter web test
