@@ -30,7 +30,7 @@ export function AlertFeed({ alerts }: { alerts: AlertLogEntry[] }) {
     return (
       <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
         <p className="text-gray-400 text-sm">No alerts yet. Add projects to your watchlist to get started.</p>
-        <Link href="/dashboard" className="text-sm text-gray-900 underline mt-2 inline-block">
+        <Link href="/search" className="text-sm text-gray-900 underline mt-2 inline-block">
           Browse projects →
         </Link>
       </div>

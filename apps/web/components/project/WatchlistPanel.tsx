@@ -29,7 +29,7 @@ export function WatchlistPanel({
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
           Watchlist · {entries.length}
         </p>
-        <Link href="/dashboard" className="text-xs text-gray-500 hover:text-gray-900">
+        <Link href="/search" className="text-xs text-gray-500 hover:text-gray-900">
           + Add
         </Link>
       </div>
@@ -37,7 +37,7 @@ export function WatchlistPanel({
       {entries.length === 0 ? (
         <div className="p-6 text-center">
           <p className="text-sm text-gray-400">No projects watched yet</p>
-          <Link href="/dashboard" className="text-xs text-gray-900 underline mt-1 inline-block">
+          <Link href="/search" className="text-xs text-gray-900 underline mt-1 inline-block">
             Browse projects
           </Link>
         </div>

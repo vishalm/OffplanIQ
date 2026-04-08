@@ -5,7 +5,7 @@ import { NavUserMenu } from './NavUserMenu'
 
 const NAV_LINKS = [
   { href: '/analytics', label: 'Analytics' },
-  { href: '/dashboard', label: 'Search' },
+  { href: '/search', label: 'Search' },
   { href: '/alerts', label: 'Alerts' },
 ]
 

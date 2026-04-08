@@ -74,7 +74,7 @@ export function NavUserMenu({ email, name, tier }: { email: string; name: string
 
           {/* Menu items */}
           <div className="py-1">
-            <MenuItem href="/dashboard" icon={iconGrid} label="Projects" onClick={() => setOpen(false)} />
+            <MenuItem href="/search" icon={iconGrid} label="Projects" onClick={() => setOpen(false)} />
             <MenuItem href="/alerts" icon={iconBell} label="Alerts" onClick={() => setOpen(false)} />
             <MenuItem href="/settings/billing" icon={iconCard} label="Billing & Plan" onClick={() => setOpen(false)} />
           </div>
