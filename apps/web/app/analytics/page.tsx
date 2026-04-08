@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AnalyticsCharts } from './charts'
+import { TimelineDrilldown } from './timeline'
 
 export default async function AnalyticsPage() {
   const supabase = createServerClient()
@@ -101,13 +102,110 @@ export default async function AnalyticsPage() {
   // PSF by area for chart
   const psfByArea = topAreas.map(a => ({ name: a.area.length > 15 ? a.area.slice(0, 13) + '..' : a.area, psf: a.avgPsf, score: a.avgScore }))
 
+  // Handover timeline: group by year + month
+  const timelineData: Record<string, { year: string; months: Record<string, { projects: { name: string; slug: string; score: number; delayed: boolean; area: string; developer: string; units: number }[] }> }> = {}
+  for (const p of all) {
+    if (!p.current_handover_date) continue
+    const d = new Date(p.current_handover_date)
+    const yr = d.getFullYear().toString()
+    const mo = d.toLocaleDateString('en-AE', { month: 'short' })
+    if (!timelineData[yr]) timelineData[yr] = { year: yr, months: {} }
+    if (!timelineData[yr].months[mo]) timelineData[yr].months[mo] = { projects: [] }
+    timelineData[yr].months[mo].projects.push({
+      name: p.name, slug: p.slug, score: p.score || 0,
+      delayed: p.handover_delay_days > 0, area: p.area,
+      developer: p.developer?.name || '', units: p.total_units || 0,
+    })
+  }
+  const timeline = Object.entries(timelineData).sort(([a], [b]) => a.localeCompare(b))
+    .map(([year, data]) => ({
+      year,
+      months: Object.entries(data.months).map(([month, mData]) => ({
+        month,
+        projects: mData.projects.sort((a, b) => b.score - a.score),
+      })),
+    }))
+
+  // Launch timeline by quarter
+  const launchByQ: Record<string, number> = {}
+  for (const p of all) {
+    if (!p.launch_date) continue
+    const d = new Date(p.launch_date)
+    const q = `Q${Math.ceil((d.getMonth() + 1) / 3)} ${d.getFullYear()}`
+    launchByQ[q] = (launchByQ[q] || 0) + 1
+  }
+  const launchTimeline = Object.entries(launchByQ).sort(([a], [b]) => a.localeCompare(b))
+    .map(([quarter, count]) => ({ quarter, count }))
+
+  // Announcements
+  const recentLaunches = [...all].filter(p => p.launch_date).sort((a, b) => b.launch_date.localeCompare(a.launch_date)).slice(0, 5)
+  const delayedProjects = all.filter(p => p.handover_delay_days > 90).sort((a, b) => b.handover_delay_days - a.handover_delay_days)
+  const nearSellout = all.filter(p => p.sellthrough_pct >= 85 && p.sellthrough_pct < 100).sort((a, b) => b.sellthrough_pct - a.sellthrough_pct)
+
   return (
     <div className="min-h-screen bg-[#f5f5f7]">
       <div className="max-w-7xl mx-auto px-6 pt-8 pb-16">
 
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Market Analytics</h1>
-          <p className="text-[13px] text-gray-400 mt-1">UAE off-plan real estate intelligence</p>
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Market Analytics</h1>
+            <p className="text-[13px] text-gray-400 mt-1">UAE off-plan real estate intelligence</p>
+          </div>
+          <p className="text-[11px] text-gray-400">Updated {new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        </div>
+
+        {/* Announcements */}
+        <div className="card p-5 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <p className="text-[13px] font-semibold text-gray-900">Market Announcements</p>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+
+            {/* Near sellout */}
+            <div>
+              <p className="text-[11px] font-semibold text-green-600 uppercase tracking-wider mb-2">Near Sellout ({nearSellout.length})</p>
+              {nearSellout.length === 0 && <p className="text-[12px] text-gray-400">No projects near sellout</p>}
+              {nearSellout.slice(0, 3).map(p => (
+                <a key={p.id} href={`/projects/${p.slug}`} className="flex items-center justify-between py-1.5 hover:bg-gray-50 rounded px-1 -mx-1 transition-colors">
+                  <div>
+                    <p className="text-[12px] font-medium text-gray-900">{p.name}</p>
+                    <p className="text-[10px] text-gray-400">{p.developer?.name}</p>
+                  </div>
+                  <span className="text-[12px] font-bold text-green-600 tabular-nums">{p.sellthrough_pct}%</span>
+                </a>
+              ))}
+            </div>
+
+            {/* Recent launches */}
+            <div>
+              <p className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider mb-2">Recent Launches</p>
+              {recentLaunches.slice(0, 3).map(p => (
+                <a key={p.id} href={`/projects/${p.slug}`} className="flex items-center justify-between py-1.5 hover:bg-gray-50 rounded px-1 -mx-1 transition-colors">
+                  <div>
+                    <p className="text-[12px] font-medium text-gray-900">{p.name}</p>
+                    <p className="text-[10px] text-gray-400">{p.developer?.name} · {p.area}</p>
+                  </div>
+                  <span className="text-[11px] text-gray-400">{new Date(p.launch_date).toLocaleDateString('en-AE', { month: 'short', year: '2-digit' })}</span>
+                </a>
+              ))}
+            </div>
+
+            {/* Delayed */}
+            <div>
+              <p className="text-[11px] font-semibold text-red-500 uppercase tracking-wider mb-2">Significant Delays ({delayedProjects.length})</p>
+              {delayedProjects.length === 0 && <p className="text-[12px] text-gray-400">No significant delays</p>}
+              {delayedProjects.slice(0, 3).map(p => (
+                <a key={p.id} href={`/projects/${p.slug}`} className="flex items-center justify-between py-1.5 hover:bg-gray-50 rounded px-1 -mx-1 transition-colors">
+                  <div>
+                    <p className="text-[12px] font-medium text-gray-900">{p.name}</p>
+                    <p className="text-[10px] text-gray-400">{p.developer?.name}</p>
+                  </div>
+                  <span className="text-[12px] font-bold text-red-500">+{Math.round(p.handover_delay_days / 30)}mo</span>
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Big numbers */}
@@ -223,7 +321,10 @@ export default async function AnalyticsPage() {
           </div>
         </div>
 
-        <p className="text-[11px] text-gray-400 text-center">
+        {/* Handover timeline drilldown */}
+        <TimelineDrilldown timeline={timeline} launchTimeline={launchTimeline} />
+
+        <p className="text-[11px] text-gray-400 text-center mt-6">
           Data from Property Finder, DLD, developer filings, RERA. Updated {new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' })}.
         </p>
       </div>
