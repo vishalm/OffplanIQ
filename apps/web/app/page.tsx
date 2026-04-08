@@ -43,8 +43,16 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white">
 
       {/* Nav */}
-      <nav className="border-b border-gray-100 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
-        <span className="text-lg font-medium text-gray-900">OffplanIQ</span>
+      <nav className="border-b border-gray-100 px-4 sm:px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
+        <Link href="/" className="flex items-center gap-2.5">
+          <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+            <rect x="2" y="14" width="6" height="16" rx="1.5" fill="#007AFF" opacity=".4"/>
+            <rect x="10" y="8" width="6" height="22" rx="1.5" fill="#007AFF" opacity=".6"/>
+            <rect x="18" y="2" width="6" height="28" rx="1.5" fill="#007AFF"/>
+            <rect x="26" y="10" width="6" height="20" rx="1.5" fill="#007AFF" opacity=".5"/>
+          </svg>
+          <span className="text-[15px] font-bold text-gray-900">Offplan<span className="text-blue-600">IQ</span></span>
+        </Link>
         <div className="flex items-center gap-4">
           <Link href="/auth/login" className="text-sm text-gray-500 hover:text-gray-900">Sign in</Link>
           <Link

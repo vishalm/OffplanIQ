@@ -38,9 +38,17 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
 
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-medium text-gray-900">OffplanIQ</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
+        <div className="mb-8 text-center flex flex-col items-center">
+          <div className="flex items-center gap-2.5 mb-2">
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+              <rect x="2" y="14" width="6" height="16" rx="1.5" fill="#007AFF" opacity=".4"/>
+              <rect x="10" y="8" width="6" height="22" rx="1.5" fill="#007AFF" opacity=".6"/>
+              <rect x="18" y="2" width="6" height="28" rx="1.5" fill="#007AFF"/>
+              <rect x="26" y="10" width="6" height="20" rx="1.5" fill="#007AFF" opacity=".5"/>
+            </svg>
+            <span className="text-xl font-bold text-gray-900">Offplan<span className="text-blue-600">IQ</span></span>
+          </div>
+          <p className="text-sm text-gray-500">Sign in to your account</p>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-6">

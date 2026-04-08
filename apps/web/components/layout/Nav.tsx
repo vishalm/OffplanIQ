@@ -32,14 +32,14 @@ export async function Nav() {
         <div className="flex items-center justify-between h-12">
 
           {/* Logo */}
-          <Link href="/analytics" className="flex items-center gap-2 shrink-0">
-            <svg width="18" height="18" viewBox="0 0 32 32" fill="none">
+          <Link href="/analytics" className="flex items-center gap-2.5 shrink-0">
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
               <rect x="2" y="14" width="6" height="16" rx="1.5" fill="#007AFF" opacity=".4"/>
               <rect x="10" y="8" width="6" height="22" rx="1.5" fill="#007AFF" opacity=".6"/>
               <rect x="18" y="2" width="6" height="28" rx="1.5" fill="#007AFF"/>
               <rect x="26" y="10" width="6" height="20" rx="1.5" fill="#007AFF" opacity=".5"/>
             </svg>
-            <span className="text-[13px] font-semibold text-gray-900">OffplanIQ</span>
+            <span className="text-[15px] font-bold text-gray-900">Offplan<span className="text-blue-600">IQ</span></span>
           </Link>
 
           {/* Desktop nav - segmented control */}
