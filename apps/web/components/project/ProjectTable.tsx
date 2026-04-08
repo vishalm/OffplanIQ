@@ -84,16 +84,25 @@ export function ProjectTable({ projects, tier }: Props) {
   return (
     <div>
       <div className="rounded-2xl bg-white overflow-hidden" style={{ boxShadow: '0 0 0 0.5px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.04)' }}>
-        {/* Header */}
-        <div className="grid grid-cols-[2.5fr_90px_80px_80px_90px_60px] gap-3 px-5 py-3 border-b border-gray-100">
+        {/* Desktop header */}
+        <div className="hidden sm:grid grid-cols-[2.5fr_90px_80px_80px_90px_60px] gap-3 px-5 py-3 border-b border-gray-100">
           {columns.map(col => (
             <button key={col.key} onClick={() => handleSort(col.key)}
-              className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-700 transition-colors flex items-center gap-1 text-left"
-            >
+              className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-700 transition-colors flex items-center gap-1 text-left">
               {col.label}
-              {sortKey === col.key && (
-                <span className="text-gray-800">{sortDir === 'desc' ? '↓' : '↑'}</span>
-              )}
+              {sortKey === col.key && <span className="text-gray-800">{sortDir === 'desc' ? '↓' : '↑'}</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile sort bar */}
+        <div className="sm:hidden flex items-center gap-2 px-4 py-2 border-b border-gray-100 overflow-x-auto">
+          {columns.map(col => (
+            <button key={col.key} onClick={() => handleSort(col.key)}
+              className={`text-[11px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap transition-colors ${
+                sortKey === col.key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'
+              }`}>
+              {col.label} {sortKey === col.key && (sortDir === 'desc' ? '↓' : '↑')}
             </button>
           ))}
         </div>
@@ -105,44 +114,49 @@ export function ProjectTable({ projects, tier }: Props) {
 
           return (
             <Link key={project.id} href={`/projects/${project.slug}`}
-              className={`grid grid-cols-[2.5fr_90px_80px_80px_90px_60px] gap-3 items-center px-5 py-3 border-b border-gray-50 hover:bg-blue-50/30 transition-colors ${isBlurred ? 'blur-sm pointer-events-none select-none' : ''}`}
-            >
-              <div className="min-w-0">
-                <p className="text-[13px] font-medium text-gray-900 truncate">{project.name}</p>
-                <p className="text-[11px] text-gray-400 truncate mt-0.5">
-                  {project.developer?.name} · {project.area}
+              className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors block ${isBlurred ? 'blur-sm pointer-events-none select-none' : ''}`}>
+
+              {/* Desktop row */}
+              <div className="hidden sm:grid grid-cols-[2.5fr_90px_80px_80px_90px_60px] gap-3 items-center px-5 py-3">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-gray-900 truncate">{project.name}</p>
+                  <p className="text-[11px] text-gray-400 truncate mt-0.5">{project.developer?.name} · {project.area}</p>
+                </div>
+                <p className="text-[13px] font-medium text-gray-900 tabular-nums">{project.current_psf ? project.current_psf.toLocaleString() : '-'}</p>
+                <p className={`text-[13px] font-semibold tabular-nums ${growth === null ? 'text-gray-300' : growth > 0 ? 'text-green-600' : growth < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                  {growth === null ? '-' : `${growth > 0 ? '+' : ''}${growth}%`}
                 </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-medium text-gray-700 tabular-nums">{project.sellthrough_pct}%</span>
+                  <div className="flex-1 h-1 bg-gray-100 rounded-full max-w-[40px]">
+                    <div className="h-1 rounded-full bg-gray-400" style={{ width: `${Math.min(project.sellthrough_pct, 100)}%` }} />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[12px] text-gray-500">{project.current_handover_date ? new Date(project.current_handover_date).toLocaleDateString('en-AE', { month: 'short', year: '2-digit' }) : '-'}</p>
+                  {project.handover_delay_days > 0 && <p className="text-[10px] text-red-400 font-medium">+{Math.round(project.handover_delay_days / 30)}mo</p>}
+                </div>
+                <ScoreBadge score={project.score} size="sm" />
               </div>
 
-              <p className="text-[13px] font-medium text-gray-900 tabular-nums">
-                {project.current_psf ? project.current_psf.toLocaleString() : '-'}
-              </p>
-
-              <p className={`text-[13px] font-semibold tabular-nums ${
-                growth === null ? 'text-gray-300' : growth > 0 ? 'text-green-600' : growth < 0 ? 'text-red-500' : 'text-gray-400'
-              }`}>
-                {growth === null ? '-' : `${growth > 0 ? '+' : ''}${growth}%`}
-              </p>
-
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-medium text-gray-700 tabular-nums">{project.sellthrough_pct}%</span>
-                <div className="flex-1 h-1 bg-gray-100 rounded-full max-w-[40px]">
-                  <div className="h-1 rounded-full bg-gray-400" style={{ width: `${Math.min(project.sellthrough_pct, 100)}%` }} />
+              {/* Mobile card */}
+              <div className="sm:hidden px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-medium text-gray-900 truncate">{project.name}</p>
+                    <p className="text-[12px] text-gray-400 mt-0.5">{project.developer?.name} · {project.area}</p>
+                  </div>
+                  <ScoreBadge score={project.score} size="sm" />
+                </div>
+                <div className="flex items-center gap-4 mt-2">
+                  <span className="text-[12px] text-gray-600">PSF {project.current_psf ? project.current_psf.toLocaleString() : '-'}</span>
+                  <span className={`text-[12px] font-semibold ${growth === null ? 'text-gray-300' : growth > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    {growth === null ? '' : `${growth > 0 ? '+' : ''}${growth}%`}
+                  </span>
+                  <span className="text-[12px] text-gray-600">{project.sellthrough_pct}% sold</span>
+                  {project.handover_delay_days > 0 && <span className="text-[11px] text-red-500 font-medium">Delayed</span>}
                 </div>
               </div>
-
-              <div>
-                <p className="text-[12px] text-gray-500">
-                  {project.current_handover_date
-                    ? new Date(project.current_handover_date).toLocaleDateString('en-AE', { month: 'short', year: '2-digit' })
-                    : '-'}
-                </p>
-                {project.handover_delay_days > 0 && (
-                  <p className="text-[10px] text-red-400 font-medium">+{Math.round(project.handover_delay_days / 30)}mo</p>
-                )}
-              </div>
-
-              <ScoreBadge score={project.score} size="sm" />
             </Link>
           )
         })}

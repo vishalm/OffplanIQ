@@ -60,7 +60,7 @@ export function IrrCalculator({ project, paymentPlans: rawPlans }: Props) {
       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-5">IRR Calculator</p>
 
       {/* Top: Big IRR result + sliders side by side */}
-      <div className="grid grid-cols-[200px_1fr] gap-8 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-6 sm:gap-8 mb-6">
         {/* Big IRR number */}
         <div className="flex flex-col items-center justify-center rounded-2xl p-5" style={{ background: irrPositive ? '#f0fdf4' : '#fef2f2' }}>
           <p className={`text-4xl font-bold tabular-nums ${irrPositive ? 'text-green-600' : 'text-red-500'}`}>
@@ -126,7 +126,7 @@ export function IrrCalculator({ project, paymentPlans: rawPlans }: Props) {
       {results.length > 0 && (
         <>
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Compare payment plans</p>
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             {results.map(result => {
               const plan = paymentPlans.find(p => p.id === result.plan_id)
               const selected = result.plan_id === selectedPlanId
@@ -153,7 +153,7 @@ export function IrrCalculator({ project, paymentPlans: rawPlans }: Props) {
       {sensitivityRows.length > 0 && (
         <>
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">What if PSF changes?</p>
-          <div className="grid grid-cols-8 gap-1.5">
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
             {sensitivityRows.map(row => {
               const isActive = row.exit_psf === exitPsf
               const positive = row.irr_pct >= 0

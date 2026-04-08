@@ -166,7 +166,7 @@ export default async function AnalyticsPage() {
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
             <p className="text-[13px] font-semibold text-gray-900">Market Announcements</p>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
             {/* Near sellout */}
             <div>
@@ -215,7 +215,7 @@ export default async function AnalyticsPage() {
         </div>
 
         {/* Big numbers */}
-        <div className="grid grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4 mb-8">
           {[
             { label: 'Total Projects', value: totalProjects.toLocaleString(), color: 'text-gray-900' },
             { label: 'Total Units', value: totalUnits.toLocaleString(), color: 'text-gray-900' },
@@ -239,10 +239,10 @@ export default async function AnalyticsPage() {
         />
 
         {/* Developer + Top/Bottom */}
-        <div className="grid grid-cols-3 gap-5 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
 
           {/* Developer leaderboard */}
-          <div className="card p-5 col-span-1">
+          <div className="card p-5">
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-4">Developer Rankings</p>
             <div className="space-y-2">
               {devRanking.slice(0, 10).map((dev, i) => (
@@ -312,7 +312,7 @@ export default async function AnalyticsPage() {
         {/* Area PSF table */}
         <div className="card p-5 mb-6">
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-4">Area Comparison</p>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {topAreas.map((a, i) => {
               const barW = avgPsf > 0 ? Math.round((a.avgPsf / topAreas[0].avgPsf) * 100) : 0
               return (

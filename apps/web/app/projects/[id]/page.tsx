@@ -57,7 +57,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         </div>
 
         {/* Hero row: Name left, Gauge right */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
@@ -76,7 +76,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         </div>
 
         {/* 2x2 Gadget tiles */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
 
           {/* Tile 1: Price & Growth */}
           <div className="card p-5">

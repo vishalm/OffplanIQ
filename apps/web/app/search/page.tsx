@@ -140,8 +140,8 @@ export default async function DashboardPage({
         </div>
 
         {/* Sidebar + Table layout */}
-        <div className="flex gap-6">
-          {/* Sidebar */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Sidebar - collapsible on mobile */}
           <FilterSidebar
             currentFilters={searchParams}
             cities={cities}

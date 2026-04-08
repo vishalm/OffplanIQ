@@ -44,7 +44,7 @@ export function FilterSidebar({
   const hasFilters = Object.keys(currentFilters).some(k => k !== 'sort' && k !== 'page' && currentFilters[k])
 
   return (
-    <aside className="w-[220px] shrink-0 space-y-5">
+    <aside className="w-full lg:w-[220px] shrink-0 space-y-5">
       {/* Result count */}
       <div>
         <p className="text-xs text-gray-400">{filteredCount} of {totalCount} projects</p>
