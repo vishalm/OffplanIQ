@@ -7,6 +7,7 @@ import { NavUserMenu } from './NavUserMenu'
 export async function Nav() {
   const supabase = createServerClient()
   const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return null
 
   const { data: profile } = session
     ? await supabase.from('user_profiles').select('full_name, subscription_tier').eq('id', session.user.id).single()
