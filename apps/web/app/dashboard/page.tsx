@@ -2,9 +2,6 @@ import { createServerClient } from '@/lib/supabase/server'
 import { ProjectTable } from '@/components/project/ProjectTable'
 import { FilterSidebar } from '@/components/project/FilterSidebar'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-
-const PAGE_SIZE = 20
 
 export default async function DashboardPage({
   searchParams,
@@ -159,21 +156,6 @@ export default async function DashboardPage({
               tier={tier}
             />
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-1 mt-5">
-                {page > 1 && (
-                  <PaginationLink page={page - 1} filters={searchParams} label="Prev" />
-                )}
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                  <PaginationLink key={p} page={p} filters={searchParams} label={String(p)} isActive={p === page} />
-                ))}
-                {page < totalPages && (
-                  <PaginationLink page={page + 1} filters={searchParams} label="Next" />
-                )}
-              </div>
-            )}
-
             {isFree && (
               <div className="mt-5 text-center">
                 <p className="text-[13px] text-gray-400">
@@ -187,25 +169,5 @@ export default async function DashboardPage({
 
       </div>
     </div>
-  )
-}
-
-function PaginationLink({ page, filters, label, isActive }: {
-  page: number; filters: Record<string, string | undefined>; label: string; isActive?: boolean
-}) {
-  const params = new URLSearchParams()
-  for (const [k, v] of Object.entries(filters)) { if (v && k !== 'page') params.set(k, v) }
-  if (page > 1) params.set('page', String(page))
-
-  return (
-    <Link href={`/dashboard?${params.toString()}`}
-      className={`text-[13px] font-medium px-3 py-1.5 rounded-lg transition-colors ${
-        isActive
-          ? 'bg-gray-900 text-white'
-          : 'text-gray-500 hover:bg-gray-200'
-      }`}
-    >
-      {label}
-    </Link>
   )
 }
