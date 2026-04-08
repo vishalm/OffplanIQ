@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AnalyticsCharts } from './charts'
 import { TimelineDrilldown } from './timeline'
+import { MoreCharts } from './more-charts'
 
 export default async function AnalyticsPage() {
   const supabase = createServerClient()
@@ -321,12 +322,38 @@ export default async function AnalyticsPage() {
           </div>
         </div>
 
+        {/* More visual charts */}
+        <MoreCharts
+          devData={devRanking.slice(0, 8).map(d => ({ name: d.name.length > 12 ? d.name.slice(0, 10) + '..' : d.name, score: d.score, onTime: d.onTime || 0, complaints: d.complaints }))}
+          sellthroughData={[
+            { range: '90-100%', count: all.filter(p => p.sellthrough_pct >= 90).length },
+            { range: '70-89%', count: all.filter(p => p.sellthrough_pct >= 70 && p.sellthrough_pct < 90).length },
+            { range: '50-69%', count: all.filter(p => p.sellthrough_pct >= 50 && p.sellthrough_pct < 70).length },
+            { range: '30-49%', count: all.filter(p => p.sellthrough_pct >= 30 && p.sellthrough_pct < 50).length },
+            { range: '<30%', count: all.filter(p => p.sellthrough_pct < 30).length },
+          ]}
+          priceData={[
+            { range: '<1M', count: all.filter(p => (p.min_price || 0) < 1000000).length },
+            { range: '1-2M', count: all.filter(p => (p.min_price || 0) >= 1000000 && (p.min_price || 0) < 2000000).length },
+            { range: '2-5M', count: all.filter(p => (p.min_price || 0) >= 2000000 && (p.min_price || 0) < 5000000).length },
+            { range: '5-10M', count: all.filter(p => (p.min_price || 0) >= 5000000 && (p.min_price || 0) < 10000000).length },
+            { range: '10M+', count: all.filter(p => (p.min_price || 0) >= 10000000).length },
+          ]}
+          handoverHealth={{
+            onTrack: all.filter(p => p.handover_status === 'on_track').length,
+            atRisk: all.filter(p => p.handover_status === 'at_risk').length,
+            delayed: all.filter(p => p.handover_status === 'delayed').length,
+          }}
+        />
+
         {/* Handover timeline drilldown */}
         <TimelineDrilldown timeline={timeline} launchTimeline={launchTimeline} />
 
         <p className="text-[11px] text-gray-400 text-center mt-6">
           Data from Property Finder, DLD, developer filings, RERA. Updated {new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' })}.
         </p>
+
+        {/* Chat is global via layout.tsx */}
       </div>
     </div>
   )
