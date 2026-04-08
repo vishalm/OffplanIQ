@@ -150,9 +150,14 @@ export default async function AnalyticsPage() {
         <div className="flex items-end justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Market Analytics</h1>
-            <p className="text-[13px] text-gray-400 mt-1">UAE off-plan real estate intelligence</p>
+            <p className="text-[13px] text-gray-400 mt-1">UAE off-plan real estate intelligence · {totalProjects} projects tracked</p>
           </div>
-          <p className="text-[11px] text-gray-400">Updated {new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <a href="/dashboard" className="flex items-center gap-2 text-[13px] font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            Search projects
+          </a>
         </div>
 
         {/* Announcements */}

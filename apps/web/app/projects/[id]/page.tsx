@@ -48,10 +48,13 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       <div className="max-w-6xl mx-auto px-6 pt-6 pb-16">
 
         {/* Breadcrumb */}
-        <a href="/dashboard" className="inline-flex items-center gap-1 text-[13px] text-gray-400 hover:text-gray-600 transition-colors mb-6">
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
-          Projects
-        </a>
+        <div className="flex items-center gap-2 text-[12px] text-gray-400 mb-6">
+          <a href="/analytics" className="hover:text-gray-600 transition-colors">Analytics</a>
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+          <a href="/dashboard" className="hover:text-gray-600 transition-colors">Search</a>
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+          <span className="text-gray-700 font-medium truncate max-w-[200px]">{p.name}</span>
+        </div>
 
         {/* Hero row: Name left, Gauge right */}
         <div className="flex items-start justify-between mb-6">

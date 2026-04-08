@@ -119,12 +119,17 @@ export default async function DashboardPage({
     <div className="min-h-screen bg-[#f5f5f7]">
       <div className="max-w-7xl mx-auto px-6 pt-8 pb-16">
 
-        {/* Header */}
+        {/* Header + breadcrumb */}
+        <div className="flex items-center gap-2 text-[12px] text-gray-400 mb-4">
+          <a href="/analytics" className="hover:text-gray-600 transition-colors">Analytics</a>
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+          <span className="text-gray-700 font-medium">Search</span>
+        </div>
         <div className="flex items-end justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Projects</h1>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Search Projects</h1>
             <p className="text-[13px] text-gray-400 mt-1">
-              {totalFiltered} projects · Avg score {avgScore} · Avg PSF AED {avgPsf.toLocaleString()}
+              {totalFiltered} results · Avg score {avgScore} · Avg PSF AED {avgPsf.toLocaleString()}
             </p>
           </div>
           {isFree && (

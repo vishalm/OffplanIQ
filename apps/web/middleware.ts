@@ -29,6 +29,9 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Pass pathname to server components for active nav state
+  response.headers.set('x-pathname', request.nextUrl.pathname)
+
   // Refresh session
   const { data: { session } } = await supabase.auth.getSession()
 
