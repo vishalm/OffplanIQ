@@ -155,10 +155,8 @@ export default async function DashboardPage({
           {/* Main content */}
           <div className="flex-1 min-w-0">
             <ProjectTable
-              projects={paginated}
+              projects={tableData}
               tier={tier}
-              sort={searchParams.sort}
-              currentFilters={searchParams}
             />
 
             {/* Pagination */}
