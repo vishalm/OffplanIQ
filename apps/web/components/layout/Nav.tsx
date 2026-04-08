@@ -29,7 +29,7 @@ export async function Nav() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-12">
 
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/analytics" className="flex items-center gap-2">
             <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
               <rect x="2" y="14" width="6" height="16" rx="1.5" fill="#007AFF" opacity=".4"/>
               <rect x="10" y="8" width="6" height="22" rx="1.5" fill="#007AFF" opacity=".6"/>
@@ -41,9 +41,9 @@ export async function Nav() {
 
           <nav className="flex items-center gap-0.5">
             {[
+              { href: '/analytics', label: 'Dashboard' },
               { href: '/dashboard', label: 'Projects' },
               { href: '/alerts', label: 'Alerts', badge: unread > 0 ? unread : null },
-              { href: '/settings/billing', label: 'Billing' },
             ].map(link => (
               <Link
                 key={link.href}

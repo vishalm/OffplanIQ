@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 export default function LoginPage() {
   const router = useRouter()
   const params = useSearchParams()
-  const redirectTo = params.get('redirectTo') ?? '/dashboard'
+  const redirectTo = params.get('redirectTo') ?? '/analytics'
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
