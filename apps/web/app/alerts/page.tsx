@@ -17,40 +17,37 @@ export default async function AlertsPage() {
   if (!session) redirect('/auth/login')
 
   // Fetch alerts (last 50, newest first)
-  const { data: alerts } = await supabase
+  const { data: alertsRaw } = await supabase
     .from('alerts_log')
     .select('*, project:project_id(name, slug, score, area)')
     .eq('user_id', session.user.id)
     .order('sent_at', { ascending: false })
     .limit(50)
+  const alerts = (alertsRaw ?? []) as any[]
 
   // Fetch watchlist with project data
-  const { data: watchlist } = await supabase
+  const { data: watchlistRaw } = await supabase
     .from('watchlist')
-    .select(`
-      id, created_at,
-      project:project_id(
-        id, name, slug, area, score, current_psf,
-        sellthrough_pct, handover_status, score_breakdown
-      )
-    `)
+    .select('id, created_at, project:project_id(id, name, slug, area, score, current_psf, sellthrough_pct, handover_status)')
     .eq('user_id', session.user.id)
     .order('created_at', { ascending: false })
+  const watchlist = (watchlistRaw ?? []) as any[]
 
   // Fetch alert preferences
-  const { data: prefs } = await supabase
+  const { data: prefsRaw } = await supabase
     .from('alert_preferences')
     .select('*')
     .eq('user_id', session.user.id)
     .single()
+  const prefs = prefsRaw as any
 
-  const unreadCount = (alerts as any[])?.filter((a: any) => !a.is_read).length ?? 0
+  const unreadCount = alerts.filter((a: any) => !a.is_read).length
 
   // Mark all as read (fire and forget)
   if (unreadCount > 0) {
-    ;(supabase
-      .from('alerts_log') as any)
-      .update({ is_read: true })
+    supabase
+      .from('alerts_log')
+      .update({ is_read: true } as any)
       .eq('user_id', session.user.id)
       .eq('is_read', false)
       .then(() => {})
@@ -69,10 +66,10 @@ export default async function AlertsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* Alert feed — takes 2/3 width */}
-          <div className="col-span-2">
+          {/* Alert feed */}
+          <div className="lg:col-span-2">
             <AlertFeed alerts={alerts ?? []} />
           </div>
 
