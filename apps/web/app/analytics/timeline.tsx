@@ -25,7 +25,7 @@ export function TimelineDrilldown({ timeline, launchTimeline }: Props) {
     <div className="card p-5 mb-6">
       {/* Header with toggle */}
       <div className="flex items-center justify-between mb-5">
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Project Timeline</p>
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">AI Signal Timeline</p>
         <div className="flex bg-gray-100 rounded-lg p-0.5">
           <button onClick={() => { setView('handover'); setSelectedYear(null); setSelectedMonth(null) }}
             className={`text-[11px] font-medium px-3 py-1 rounded-md transition-colors ${view === 'handover' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>

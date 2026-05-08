@@ -159,69 +159,114 @@ export default async function AnalyticsPage() {
     <div className="min-h-screen bg-[#f5f5f7]">
       <div className="max-w-7xl mx-auto px-6 pt-8 pb-16">
 
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Market Analytics</h1>
-            <p className="text-[13px] text-gray-400 mt-1">UAE off-plan real estate intelligence · {totalProjects} projects tracked</p>
-          </div>
-          <a href="/search" className="flex items-center gap-2 text-[13px] font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full transition-colors">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
-            Search projects
-          </a>
+        <div className="grid gap-6 xl:grid-cols-[1.25fr_0.95fr] mb-6">
+          <section className="space-y-6">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Market signals</p>
+                  <h2 className="mt-3 text-2xl font-semibold text-slate-950">Top signal dashboard</h2>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    { label: 'Projects tracked', value: totalProjects.toLocaleString() },
+                    { label: 'Avg PSF', value: `AED ${avgPsf.toLocaleString()}` },
+                    { label: 'DLD sales', value: totalSold.toLocaleString() },
+                    { label: 'Avg score', value: `${avgScore}/100` },
+                  ].map(item => (
+                    <div key={item.label} className="rounded-3xl bg-slate-50 p-4 text-center">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{item.label}</p>
+                      <p className="mt-3 text-xl font-semibold text-slate-950 tabular-nums">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Signal highlight</p>
+                  <p className="mt-2 text-sm text-slate-700">AI matches each project against live DLD price signals, developer momentum, and handover risk.</p>
+                </div>
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Why AI?</p>
+                  <p className="mt-2 text-sm text-slate-700">It blends partial datasets, hides weak signals, and surfaces only explainable insights.</p>
+                </div>
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Action focus</p>
+                  <p className="mt-2 text-sm text-slate-700">Designed to deliver the most actionable property signals first.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <AnalyticsCharts scoreBuckets={scoreBuckets} psfByArea={psfByArea} cityData={emirateRows} />
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Timing & coverage</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-slate-950">Handover and reach</h2>
+                </div>
+                <span className="text-sm text-slate-500">Updated from current handover dates and emirate coverage.</span>
+              </div>
+              <div className="mt-5">
+                <TimelineDrilldown timeline={timeline} launchTimeline={launchTimeline} />
+              </div>
+            </div>
+          </section>
         </div>
 
-        {/* Announcements */}
-        <div className="card p-5 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            <p className="text-[13px] font-semibold text-gray-900">Market Announcements</p>
+        <div className="grid gap-5 lg:grid-cols-2 mb-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Developer & pricing signals</p>
+                <h3 className="mt-2 text-xl font-semibold text-slate-950">Investment inputs</h3>
+              </div>
+              <span className="text-sm text-slate-500">Signal-rich metrics</span>
+            </div>
+            <div className="mt-5">
+              <MoreCharts devData={devRanking.slice(0, 12)} sellthroughData={[
+                { range: '20+ sold', count: all.filter(p => (p.units_sold || 0) >= 20).length },
+                { range: '10-19', count: all.filter(p => (p.units_sold || 0) >= 10 && (p.units_sold || 0) < 20).length },
+                { range: '5-9', count: all.filter(p => (p.units_sold || 0) >= 5 && (p.units_sold || 0) < 10).length },
+                { range: '1-4', count: all.filter(p => (p.units_sold || 0) >= 1 && (p.units_sold || 0) < 5).length },
+                { range: 'No sales', count: all.filter(p => (p.units_sold || 0) === 0).length },
+              ]} priceData={[
+                { range: '200k-500k', count: all.filter(p => p.min_price >= 200_000 && p.min_price < 500_000).length },
+                { range: '500k-1M', count: all.filter(p => p.min_price >= 500_000 && p.min_price < 1_000_000).length },
+                { range: '1M-1.5M', count: all.filter(p => p.min_price >= 1_000_000 && p.min_price < 1_500_000).length },
+                { range: '1.5M+', count: all.filter(p => p.min_price >= 1_500_000).length },
+              ]} handoverHealth={{
+                onTrack: all.filter(p => p.current_handover_date && p.handover_delay_days <= 0).length,
+                atRisk: all.filter(p => p.current_handover_date && p.handover_delay_days > 0 && p.handover_delay_days <= 90).length,
+                delayed: delayedProjects.length,
+              }} />
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-            {/* Near sellout */}
-            <div>
-              <p className="text-[11px] font-semibold text-green-600 uppercase tracking-wider mb-2">Near Sellout ({nearSellout.length})</p>
-              {nearSellout.length === 0 && <p className="text-[12px] text-gray-400">No projects near sellout</p>}
-              {nearSellout.slice(0, 3).map(p => (
-                <a key={p.id} href={`/projects/${p.slug}`} className="flex items-center justify-between py-1.5 hover:bg-gray-50 rounded px-1 -mx-1 transition-colors">
-                  <div>
-                    <p className="text-[12px] font-medium text-gray-900">{p.name}</p>
-                    <p className="text-[10px] text-gray-400">{p.developer?.name}</p>
-                  </div>
-                  <span className="text-[12px] font-bold text-green-600 tabular-nums">{p.sellthrough_pct}%</span>
-                </a>
-              ))}
-            </div>
-
-            {/* Recent launches */}
-            <div>
-              <p className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider mb-2">Recent Launches</p>
-              {recentLaunches.slice(0, 3).map(p => (
-                <a key={p.id} href={`/projects/${p.slug}`} className="flex items-center justify-between py-1.5 hover:bg-gray-50 rounded px-1 -mx-1 transition-colors">
-                  <div>
-                    <p className="text-[12px] font-medium text-gray-900">{p.name}</p>
-                    <p className="text-[10px] text-gray-400">{p.developer?.name} · {p.area}</p>
-                  </div>
-                  <span className="text-[11px] text-gray-400">{new Date(p.launch_date).toLocaleDateString('en-AE', { month: 'short', year: '2-digit' })}</span>
-                </a>
-              ))}
-            </div>
-
-            {/* Delayed */}
-            <div>
-              <p className="text-[11px] font-semibold text-red-500 uppercase tracking-wider mb-2">Significant Delays ({delayedProjects.length})</p>
-              {delayedProjects.length === 0 && <p className="text-[12px] text-gray-400">No significant delays</p>}
-              {delayedProjects.slice(0, 3).map(p => (
-                <a key={p.id} href={`/projects/${p.slug}`} className="flex items-center justify-between py-1.5 hover:bg-gray-50 rounded px-1 -mx-1 transition-colors">
-                  <div>
-                    <p className="text-[12px] font-medium text-gray-900">{p.name}</p>
-                    <p className="text-[10px] text-gray-400">{p.developer?.name}</p>
-                  </div>
-                  <span className="text-[12px] font-bold text-red-500">+{Math.round(p.handover_delay_days / 30)}mo</span>
-                </a>
-              ))}
+          <div className="grid gap-5">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Latest market alerts</p>
+              <div className="mt-5 grid gap-4">
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-green-600">Near Sellout</p>
+                  <p className="mt-3 text-3xl font-semibold text-slate-950">{nearSellout.length}</p>
+                  <p className="mt-2 text-sm text-slate-600">High-velocity projects investors should monitor closely.</p>
+                </div>
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-600">Recent Launches</p>
+                  <p className="mt-3 text-3xl font-semibold text-slate-950">{recentLaunches.length}</p>
+                  <p className="mt-2 text-sm text-slate-600">New supply entering the market and available for selection.</p>
+                </div>
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">Significant Delays</p>
+                  <p className="mt-3 text-3xl font-semibold text-slate-950">{delayedProjects.length}</p>
+                  <p className="mt-2 text-sm text-slate-600">Projects at risk of delivery slip that affect timing.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
