@@ -2,6 +2,27 @@ import { createServerClient } from '@/lib/supabase/server'
 import { ProjectTable } from '@/components/project/ProjectTable'
 import { FilterSidebar } from '@/components/project/FilterSidebar'
 import { redirect } from 'next/navigation'
+import { emirateForArea } from '@/lib/uae-geo'
+import { disableUiComponentsDueToLackOfData } from '@/lib/featureFlags'
+import {
+  ActiveFilters,
+  applyFilters,
+  disjunctiveFacet,
+  disjunctiveRangeFacet,
+} from '@/lib/facets'
+
+const formatAed = (n: number) =>
+  n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` :
+  n >= 1_000     ? `${Math.round(n / 1_000)}K` :
+  String(n)
+
+const formatPsf = (n: number) =>
+  n >= 1_000 ? `${(n / 1_000).toFixed(1)}K` : String(Math.round(n))
+
+// Source of city for a row — prefer the column the scraper writes; fall back
+// to the area-based mapping for any row that predates the city column.
+const resolveCity = (p: any): string =>
+  p.city || emirateForArea(p.area)
 
 export default async function DashboardPage({
   searchParams,
@@ -17,119 +38,112 @@ export default async function DashboardPage({
   const tier = (profile as any)?.subscription_tier ?? 'free'
   const isFree = tier === 'free'
 
-  // ─── Fetch ALL projects for filter counts ───
+  // Fetch every active project once. Filters and facets all run over this set
+  // in memory — payloads are small (hundreds, not millions) and this keeps
+  // the facet logic identical to the table-row logic.
   const { data: allRaw } = await supabase
     .from('projects')
-    .select('id, name, slug, area, status, handover_status, current_psf, launch_psf, score, sellthrough_pct, handover_delay_days, developer:developer_id(name, slug)')
+    .select(
+      'id, name, slug, area, city, status, handover_status, unit_types, ' +
+      'total_units, units_sold, sellthrough_pct, launch_psf, current_psf, ' +
+      'min_price, max_price, score, score_breakdown, ' +
+      'current_handover_date, handover_delay_days, ' +
+      'developer:developer_id(name, slug, developer_score)',
+    )
     .in('status', ['active', 'pre_launch'])
   const allProjects = (allRaw ?? []) as any[]
 
-  // ─── Compute dynamic filter options from data ───
-  const cityMap: Record<string, Set<string>> = {}
-  const areaCount: Record<string, number> = {}
-  const devCount: Record<string, number> = {}
-  const statusCount: Record<string, number> = {}
-
-  for (const p of allProjects) {
-    // Determine city from area
-    const area = p.area || 'Unknown'
-    let city = 'Other'
-    const dubaiAreas = ['Business Bay','Downtown Dubai','Dubai Marina','Dubai Hills','Dubai Hills Estate','JVC','JLT','Creek Harbour','Dubai Creek Harbour (The Lagoons)','Dubai Harbour','Palm Jumeirah','Meydan','Arjan','Damac Hills','Sobha Hartland','Dubai South','Dubai South (Dubai World Central)','Expo City','Al Furjan','Motor City','Sports City','Arabian Ranches','Mohammed Bin Rashid City','Jumeirah Village Circle','Dubai Design District','Mina Rashid','The Valley','Nad Al Sheba','Bukadra','Dubai Land']
-    const adAreas = ['Saadiyat Island','Yas Island','Al Reem Island','Al Raha Beach','Abu Dhabi','Ghantoot','Al Hudayriat Island','Al Maryah Island','Khalifa City']
-    const rakAreas = ['Al Marjan Island','Ras Al Khaimah','Mina Al Arab','Al Hamra Village','RAK Central']
-    if (dubaiAreas.includes(area)) city = 'Dubai'
-    else if (adAreas.includes(area)) city = 'Abu Dhabi'
-    else if (rakAreas.includes(area)) city = 'Ras Al Khaimah'
-
-    if (!cityMap[city]) cityMap[city] = new Set()
-    cityMap[city].add(area)
-    areaCount[area] = (areaCount[area] || 0) + 1
-
-    const dev = p.developer?.name || 'Unknown'
-    devCount[dev] = (devCount[dev] || 0) + 1
-
-    const hs = p.handover_status || 'unknown'
-    statusCount[hs] = (statusCount[hs] || 0) + 1
+  // Parse URL → typed filter state.
+  const active: ActiveFilters = {
+    city:      searchParams.city,
+    area:      searchParams.area,
+    developer: searchParams.developer,
+    status:    searchParams.status,
+    unit_type: searchParams.unit_type,
+    price:     searchParams.price,
+    psf:       searchParams.psf,
+    minScore:  searchParams.minScore,
+    q:         searchParams.q,
   }
 
-  const cities = Object.entries(cityMap)
-    .map(([city, areas]) => ({ value: city, label: city, count: [...areas].reduce((s, a) => s + (areaCount[a] || 0), 0) }))
-    .sort((a, b) => b.count - a.count)
+  // Build every facet from the data. Each is "disjunctive" — counts reflect
+  // every OTHER active filter, so picking "Dubai" doesn't zero out city.
+  const cities = disjunctiveFacet(allProjects, active, 'city',
+    resolveCity, p => resolveCity(p))
 
-  const selectedCity = searchParams.city
-  const districts = selectedCity && cityMap[selectedCity]
-    ? [...cityMap[selectedCity]]
-        .map(a => ({ value: a, label: a, count: areaCount[a] || 0 }))
-        .sort((a, b) => b.count - a.count)
+  const areas = active.city
+    ? disjunctiveFacet(allProjects, active, 'area',
+        resolveCity, p => p.area)
     : []
 
-  const developers = Object.entries(devCount)
-    .map(([name, count]) => ({ value: name, label: name, count }))
-    .sort((a, b) => b.count - a.count)
+  const developers = disjunctiveFacet(allProjects, active, 'developer',
+    resolveCity, p => p.developer?.name)
 
-  const handoverStatuses = Object.entries(statusCount)
-    .map(([status, count]) => ({
-      value: status,
-      label: status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      count,
+  const handoverStatuses = disjunctiveFacet(allProjects, active, 'status',
+    resolveCity, p => p.handover_status).map(o => ({
+      ...o,
+      label: o.value.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()),
     }))
-    .sort((a, b) => b.count - a.count)
 
-  // ─── Fetch ALL projects (filtering/sorting/pagination done client-side in JS) ───
-  let filtered = allProjects as any[]
+  const unitTypes = disjunctiveFacet(allProjects, active, 'unit_type',
+    resolveCity, p => p.unit_types, /* isArray */ true)
 
-  // Server-side filters (reduce payload for sidebar selections)
-  if (searchParams.city && !searchParams.area) {
-    const areas = cityMap[searchParams.city]
-    if (areas) filtered = filtered.filter((p: any) => [...areas].includes(p.area))
-  }
-  if (searchParams.area) filtered = filtered.filter((p: any) => p.area === searchParams.area)
-  if (searchParams.status) filtered = filtered.filter((p: any) => p.handover_status === searchParams.status)
-  if (searchParams.q) {
-    const q = searchParams.q.toLowerCase()
-    filtered = filtered.filter((p: any) => p.name?.toLowerCase().includes(q) || p.developer?.name?.toLowerCase().includes(q))
-  }
-  if (searchParams.minScore) {
-    const min = parseInt(searchParams.minScore)
-    filtered = min === 0 ? filtered.filter((p: any) => p.score < 55) : filtered.filter((p: any) => p.score >= min)
-  }
-  if (searchParams.psf) {
-    const [lo, hi] = searchParams.psf.split('-').map(Number)
-    filtered = filtered.filter((p: any) => (p.current_psf || 0) >= lo && (p.current_psf || 0) <= hi)
-  }
-  if (searchParams.developer) filtered = filtered.filter((p: any) => p.developer?.name === searchParams.developer)
+  const hidePsfComponents = disableUiComponentsDueToLackOfData
 
-  // Fetch full data for filtered projects (need score_breakdown, payment_plans etc)
-  const filteredIds = filtered.map((p: any) => p.id)
-  const { data: fullProjects } = filteredIds.length > 0
-    ? await supabase.from('projects')
-        .select('id, name, slug, area, status, handover_status, total_units, units_sold, sellthrough_pct, launch_psf, current_psf, score, score_breakdown, current_handover_date, handover_delay_days, developer:developer_id(name, slug, developer_score)')
-        .in('id', filteredIds)
-    : { data: [] }
+  const priceBuckets = disjunctiveRangeFacet(allProjects, active, 'price',
+    resolveCity, p => p.min_price, n => `AED ${formatAed(n)}`)
 
-  const tableData = (fullProjects ?? []) as any[]
-  const totalFiltered = tableData.length
+  const psfBuckets = hidePsfComponents ? [] : disjunctiveRangeFacet(allProjects, active, 'psf',
+    resolveCity, p => p.current_psf, n => `${formatPsf(n)}/sqft`)
 
-  // Stats
-  const avgScore = totalFiltered ? Math.round(tableData.reduce((s: number, p: any) => s + (p.score || 0), 0) / totalFiltered) : 0
-  const withPsf = tableData.filter((p: any) => p.current_psf)
-  const avgPsf = withPsf.length ? Math.round(withPsf.reduce((s: number, p: any) => s + p.current_psf, 0) / withPsf.length) : 0
+  // Score buckets stay as labelled bands ("Excellent" etc.) but only show
+  // when there's data in them.
+  const scoreBuckets = (() => {
+    const noScoreFilter = { ...active }; delete noScoreFilter.minScore
+    const filtered = applyFilters(allProjects, noScoreFilter, resolveCity)
+    const counts = {
+      '85': filtered.filter(p => p.score != null && p.score >= 85).length,
+      '70': filtered.filter(p => p.score != null && p.score >= 70 && p.score < 85).length,
+      '55': filtered.filter(p => p.score != null && p.score >= 55 && p.score < 70).length,
+      '0':  filtered.filter(p => p.score != null && p.score < 55).length,
+    }
+    const labels: Record<string, string> = { '85': '85+', '70': '70+', '55': '55+', '0': '<55' }
+    return Object.entries(counts)
+      .filter(([, c]) => c > 0)
+      .map(([value, count]) => ({ value, label: labels[value], count }))
+  })()
+
+  // Apply every active filter to get the table rows.
+  const filtered = applyFilters(allProjects, active, resolveCity)
+  const totalFiltered = filtered.length
+
+  const avgScore = totalFiltered
+    ? Math.round(filtered.filter((p: any) => p.score != null)
+        .reduce((s: number, p: any) => s + p.score, 0) /
+        Math.max(1, filtered.filter((p: any) => p.score != null).length))
+    : 0
+  const withPsf = hidePsfComponents ? [] : filtered.filter((p: any) => p.current_psf)
+  const avgPsf = withPsf.length
+    ? Math.round(withPsf.reduce((s: number, p: any) => s + p.current_psf, 0) / withPsf.length)
+    : 0
 
   return (
     <div className="min-h-screen bg-[#f5f5f7]">
       <div className="max-w-7xl mx-auto px-6 pt-8 pb-16">
-
-        {/* Header + breadcrumb */}
         <div className="flex items-center gap-2 text-[12px] text-gray-400 mb-4">
           <a href="/analytics" className="hover:text-gray-600 transition-colors">Analytics</a>
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
           <span className="text-gray-700 font-medium">Search</span>
         </div>
         <div className="flex items-end justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Search Projects</h1>
             <p className="text-[13px] text-gray-400 mt-1">
-              {totalFiltered} results · Avg score {avgScore} · Avg PSF AED {avgPsf.toLocaleString()}
+              {totalFiltered} results
+              {avgScore ? ` · Avg score ${avgScore}` : ''}
+              {!hidePsfComponents && avgPsf ? ` · Avg PSF AED ${avgPsf.toLocaleString()}` : ''}
             </p>
           </div>
           {isFree && (
@@ -139,27 +153,23 @@ export default async function DashboardPage({
           )}
         </div>
 
-        {/* Sidebar + Table layout */}
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Sidebar - collapsible on mobile */}
           <FilterSidebar
             currentFilters={searchParams}
             cities={cities}
-            districts={districts}
+            districts={areas}
             developers={developers}
             handoverStatuses={handoverStatuses}
-            scoreRange={{ min: 0, max: 100 }}
-            psfRange={{ min: 0, max: 10000 }}
+            unitTypes={unitTypes}
+            priceBuckets={priceBuckets}
+            psfBuckets={psfBuckets}
+            scoreBuckets={scoreBuckets}
             totalCount={allProjects.length}
             filteredCount={totalFiltered}
           />
 
-          {/* Main content */}
           <div className="flex-1 min-w-0">
-            <ProjectTable
-              projects={tableData}
-              tier={tier}
-            />
+            <ProjectTable projects={filtered} tier={tier} hidePsfColumns={hidePsfComponents} />
 
             {isFree && (
               <div className="mt-5 text-center">
@@ -171,7 +181,6 @@ export default async function DashboardPage({
             )}
           </div>
         </div>
-
       </div>
     </div>
   )

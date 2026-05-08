@@ -28,6 +28,8 @@ venv/
 # playwright
 playwright-report/
 test-results/
+apps/web/e2e/.auth/
+apps/web/e2e/.results/
 
 # supabase
 supabase/.branches

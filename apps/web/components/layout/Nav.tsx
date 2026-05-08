@@ -4,7 +4,17 @@ import { createServerClient } from '@/lib/supabase/server'
 import { MobileNav } from './MobileNav'
 import { NavUserMenu } from './NavUserMenu'
 
+// Routes that own their own chrome (Phase 5 AI-first surface). Nav stays out
+// of the way so the conversation can be full-bleed.
+const AI_FIRST_PATHS = ['/', '/ask']
+
 export async function Nav() {
+  const headersList = headers()
+  const pathname = headersList.get('x-pathname') || ''
+  if (AI_FIRST_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+    return null
+  }
+
   const supabase = createServerClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return null
@@ -18,8 +28,6 @@ export async function Nav() {
     : { data: null }
 
   const unread = (alertCount as any)?.count ?? 0
-  const headersList = headers()
-  const pathname = headersList.get('x-pathname') || ''
 
   const links = [
     { href: '/analytics', label: 'Analytics' },

@@ -14,6 +14,18 @@
     --success: 52 199 89;
     --warning: 255 149 0;
     --danger: 255 59 48;
+
+    /* AI-first surface (Phase 5). Used by .ai-surface — opt-in per route, so
+       /search, /analytics, /projects/[id] keep their existing palette. */
+    --ai-bg-base:    16 14 12;     /* warm near-black */
+    --ai-bg-raised:  28 24 20;     /* card / prompt surface */
+    --ai-bg-hover:   38 33 27;
+    --ai-text:       240 235 226;  /* warm off-white */
+    --ai-text-soft:  170 162 150;
+    --ai-text-faint: 100 95 85;
+    --ai-border:     58 50 40;
+    --ai-accent:     212 169 90;   /* Dubai gold */
+    --ai-accent-soft: 232 195 130;
   }
 
   body {
@@ -138,4 +150,83 @@
   .stagger > *:nth-child(4) { animation-delay: 180ms; }
   .stagger > *:nth-child(5) { animation-delay: 240ms; }
   .stagger > *:nth-child(6) { animation-delay: 300ms; }
+
+  /* ─── AI-first surface (Phase 5) ─────────────────────────── */
+  /* Apply to <body> via the layout wrapping <main>: any descendant inherits
+     the warm-dark theme. Existing dashboard pages stay on the white theme. */
+  .ai-surface {
+    background: rgb(var(--ai-bg-base));
+    color: rgb(var(--ai-text));
+  }
+  .ai-surface ::selection {
+    background: rgba(212, 169, 90, 0.25);
+  }
+
+  .ai-card {
+    background: rgb(var(--ai-bg-raised));
+    border: 1px solid rgb(var(--ai-border));
+    border-radius: 16px;
+  }
+
+  .ai-prompt {
+    background: rgb(var(--ai-bg-raised));
+    border: 1px solid rgb(var(--ai-border));
+    color: rgb(var(--ai-text));
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+  }
+  .ai-prompt:focus-within {
+    border-color: rgb(var(--ai-accent));
+    box-shadow: 0 0 0 3px rgba(212, 169, 90, 0.18);
+  }
+  .ai-prompt::placeholder,
+  .ai-prompt input::placeholder,
+  .ai-prompt textarea::placeholder {
+    color: rgb(var(--ai-text-faint));
+  }
+
+  .ai-chip {
+    background: rgb(var(--ai-bg-raised));
+    border: 1px solid rgb(var(--ai-border));
+    color: rgb(var(--ai-text-soft));
+    border-radius: 999px;
+    padding: 0.625rem 1rem;
+    font-size: 0.8125rem;
+    transition: all 200ms ease;
+  }
+  .ai-chip:hover {
+    background: rgb(var(--ai-bg-hover));
+    border-color: rgb(var(--ai-accent));
+    color: rgb(var(--ai-text));
+  }
+
+  .ai-accent {
+    color: rgb(var(--ai-accent));
+  }
+
+  .ai-display {
+    font-family: 'Cormorant Garamond', 'EB Garamond', Georgia, 'Times New Roman', serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  /* Pulse cursor for streaming/typing */
+  .ai-cursor::after {
+    content: '▍';
+    margin-left: 2px;
+    color: rgb(var(--ai-accent));
+    animation: aiBlink 1s infinite;
+  }
+  @keyframes aiBlink {
+    0%, 50%   { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  /* Soft radial glow behind hero — purely decorative */
+  .ai-glow {
+    background:
+      radial-gradient(ellipse 70% 55% at 50% 40%,
+        rgba(212, 169, 90, 0.10) 0%,
+        rgba(212, 169, 90, 0.04) 35%,
+        transparent 70%);
+  }
 }

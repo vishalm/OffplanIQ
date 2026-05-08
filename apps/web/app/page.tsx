@@ -1,151 +1,113 @@
 // apps/web/app/page.tsx
-// Public landing page — the first thing a visitor sees
-// Keep it brutally simple: headline, 3 benefits, one CTA
+// Phase 5.2 — AI-first landing on the existing light theme.
+//
+// Single prompt input as the hero, suggestion chips below. No dashboard.
+// Same palette/typography as /search and /analytics so the brand stays
+// consistent across pages.
 
 import Link from 'next/link'
+import { Suspense } from 'react'
+import { LandingPrompt } from '@/components/ai/LandingPrompt'
 
-const features = [
-  {
-    title: 'Live PSF tracker',
-    desc: 'Price-per-sqft history for every Dubai off-plan project. Updated daily from DLD transaction records.',
-  },
-  {
-    title: 'IRR calculator',
-    desc: 'Compare every payment plan side by side as real annualised returns. See exactly what you\'re getting.',
-  },
-  {
-    title: 'Developer scorecards',
-    desc: 'On-time delivery rate, RERA complaints, historical ROI. Every developer scored 0 to 100.',
-  },
-  {
-    title: 'Sell-through velocity',
-    desc: 'Know how fast units are actually selling. Slow sell-through = developer pressure = your negotiation leverage.',
-  },
-  {
-    title: 'Score alerts',
-    desc: 'Get notified the moment a project you\'re watching drops or rises in score. Never miss a move.',
-  },
-  {
-    title: 'Sunday digest',
-    desc: 'One email every Sunday with your watchlist moves, new launches, and market PSF snapshot.',
-  },
+export const metadata = {
+  title: 'OffplanIQ — Ask anything about UAE off-plan property',
+  description: 'AI-first property intelligence for UAE off-plan investors. Ask in plain English.',
+}
+
+const SUGGESTIONS = [
+  "Highest-velocity Dubai projects under AED 2M handing over before Q3 2027",
+  "Compare Emaar Beachfront and Damac Lagoons",
+  "What's launched this week?",
+  "Best 1BR by a top-quartile developer in JVC",
+  "Estimate IRR if Creek Bay exits at 4,000 PSF in 4 years",
+  "Sobha projects with the lowest sell-through stall risk",
 ]
 
-const stats = [
-  { value: '142+', label: 'Active projects tracked' },
-  { value: 'AED 498B', label: 'Transactions covered (9m 2025)' },
-  { value: 'T+1', label: 'DLD data freshness' },
-  { value: '0 to 100', label: 'Transparent project scoring' },
+const PROOF = [
+  { v: 'T+1',           l: 'DLD freshness' },
+  { v: 'Brochure-cited', l: 'Every claim' },
+  { v: 'Real-time',     l: 'Launches & moves' },
+  { v: 'AED',           l: 'Native currency' },
 ]
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
-
-      {/* Nav */}
-      <nav className="border-b border-gray-100 px-4 sm:px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
+      {/* minimal chrome — brand + sign-in */}
+      <header className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
-          <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
-            <rect x="2" y="14" width="6" height="16" rx="1.5" fill="#007AFF" opacity=".4"/>
-            <rect x="10" y="8" width="6" height="22" rx="1.5" fill="#007AFF" opacity=".6"/>
-            <rect x="18" y="2" width="6" height="28" rx="1.5" fill="#007AFF"/>
+          <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+            <rect x="2"  y="14" width="6" height="16" rx="1.5" fill="#007AFF" opacity=".4"/>
+            <rect x="10" y="8"  width="6" height="22" rx="1.5" fill="#007AFF" opacity=".6"/>
+            <rect x="18" y="2"  width="6" height="28" rx="1.5" fill="#007AFF"/>
             <rect x="26" y="10" width="6" height="20" rx="1.5" fill="#007AFF" opacity=".5"/>
           </svg>
-          <span className="text-[15px] font-bold text-gray-900">Offplan<span className="text-blue-600">IQ</span></span>
+          <span className="text-[15px] font-bold text-gray-900">
+            Offplan<span className="text-blue-600">IQ</span>
+          </span>
         </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/auth/login" className="text-sm text-gray-500 hover:text-gray-900">Sign in</Link>
+        <nav className="flex items-center gap-2">
+          <Link
+            href="/auth/login"
+            className="text-sm text-gray-500 hover:text-gray-900 px-3 py-2 transition"
+          >
+            Sign in
+          </Link>
           <Link
             href="/auth/register"
-            className="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition"
+            className="text-sm text-white bg-gray-900 hover:bg-gray-700 px-4 py-2 rounded-lg transition"
           >
             Start free
           </Link>
-        </div>
-      </nav>
+        </nav>
+      </header>
 
-      {/* Hero */}
-      <section className="max-w-4xl mx-auto px-6 pt-24 pb-16 text-center">
-        <p className="text-xs font-medium tracking-widest text-gray-400 uppercase mb-4">
-          Dubai · Off-plan intelligence
-        </p>
-        <h1 className="text-5xl font-medium text-gray-900 leading-tight mb-6">
-          What Bloomberg is to stocks,<br />
-          OffplanIQ is to Dubai off-plan
+      {/* hero */}
+      <main className="max-w-3xl mx-auto px-6 pt-20 pb-24 text-center fade-in">
+        <p className="section-label mb-5">UAE OFF-PLAN INTELLIGENCE</p>
+
+        <h1 className="text-[40px] sm:text-[52px] font-medium text-gray-900 leading-[1.1] tracking-tight mb-5">
+          The market knows.<br />
+          <span className="text-gray-400">Now you do, too.</span>
         </h1>
-        <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-10">
-          Live PSF tracking, sell-through velocity, IRR calculators and developer scorecards
-          for every active Dubai off-plan project. Built for serious investors.
+
+        <p className="text-[15px] text-gray-500 max-w-xl mx-auto mb-12 leading-relaxed">
+          Ask in plain English. Grounded in DLD transactions, developer brochures
+          and live PSF data. Every answer cited, every number sourced.
         </p>
-        <div className="flex items-center justify-center gap-4">
-          <Link
-            href="/auth/register"
-            className="bg-gray-900 text-white px-8 py-3 rounded-xl text-sm font-medium hover:bg-gray-700 transition"
-          >
-            Start free, no card needed
-          </Link>
-          <Link href="/auth/login" className="text-sm text-gray-500 hover:text-gray-900">
-            Sign in →
-          </Link>
-        </div>
-      </section>
 
-      {/* Stats */}
-      <section className="bg-gray-50 py-10">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="grid grid-cols-4 gap-6">
-            {stats.map(s => (
-              <div key={s.label} className="text-center">
-                <p className="text-2xl font-medium text-gray-900">{s.value}</p>
-                <p className="text-xs text-gray-500 mt-1">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        <Suspense fallback={null}>
+          <LandingPrompt />
+        </Suspense>
 
-      {/* Features */}
-      <section className="max-w-4xl mx-auto px-6 py-20">
-        <h2 className="text-2xl font-medium text-gray-900 text-center mb-12">
-          Every number an investor needs
-        </h2>
-        <div className="grid grid-cols-3 gap-6">
-          {features.map(f => (
-            <div key={f.title} className="border border-gray-200 rounded-xl p-6">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">{f.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
-            </div>
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-2 stagger">
+          {SUGGESTIONS.map(s => (
+            <Link
+              key={s}
+              href={`/auth/login?seed=${encodeURIComponent(s)}`}
+              className="text-[12.5px] text-gray-600 bg-white border border-gray-200 hover:border-gray-300 hover:text-gray-900 hover:bg-gray-50 px-3.5 py-2 rounded-full transition"
+            >
+              {s}
+            </Link>
           ))}
         </div>
+      </main>
+
+      {/* proof points */}
+      <section className="max-w-3xl mx-auto px-6 pb-12 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+        {PROOF.map(s => (
+          <div key={s.l} className="border-t border-gray-100 pt-4">
+            <p className="text-xl font-medium text-gray-900 tracking-tight">{s.v}</p>
+            <p className="text-[11px] uppercase tracking-widest text-gray-400 mt-1">{s.l}</p>
+          </div>
+        ))}
       </section>
 
-      {/* Pricing CTA */}
-      <section className="bg-gray-900 py-16">
-        <div className="max-w-2xl mx-auto px-6 text-center">
-          <h2 className="text-2xl font-medium text-white mb-4">
-            Start free. Upgrade when it pays for itself.
-          </h2>
-          <p className="text-gray-400 text-sm mb-8">
-            Free plan gives you the top 20 projects. Investor plan (AED 750/mo) unlocks everything.
-            One good investment decision pays for years of subscription.
-          </p>
-          <Link
-            href="/auth/register"
-            className="inline-block bg-white text-gray-900 px-8 py-3 rounded-xl text-sm font-medium hover:bg-gray-100 transition"
-          >
-            Create free account
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-100 py-8 text-center">
-        <p className="text-xs text-gray-400">
-          © {new Date().getFullYear()} OffplanIQ · Dubai, UAE ·{' '}
-          <a href="mailto:hello@offplaniq.com" className="underline">hello@offplaniq.com</a>
+      <footer className="border-t border-gray-100 py-6 text-center">
+        <p className="text-[11px] text-gray-400 tracking-wide">
+          © {new Date().getFullYear()} OffplanIQ · Dubai
         </p>
       </footer>
-
     </div>
   )
 }

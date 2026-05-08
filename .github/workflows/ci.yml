@@ -6,9 +6,28 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel previous runs on the same PR — saves CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  typecheck-and-test:
+  # ─── Web app: type-check + lint + unit tests + production build ─────
+  # Each step exits the workflow on failure so we never green-light a broken
+  # main branch. The build step exercises the same Next.js compile path Vercel
+  # will run on deploy, so a green CI = green deploy.
+  web:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      # Build-time env defaults so `next build` doesn't fail on missing
+      # NEXT_PUBLIC_* vars in CI. Production values come from Vercel secrets.
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -21,13 +40,124 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - run: pnpm install
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ${{ github.workspace }}
 
-      - name: Run tests
-        run: pnpm --filter web test
+      - name: Type-check
+        run: npx tsc --noEmit
 
-  python-tests:
+      - name: Lint
+        run: npx next lint --quiet --no-cache
+        continue-on-error: true   # promote to required once we clean up the legacy warnings
+
+      - name: Unit tests (vitest)
+        run: pnpm test
+
+      - name: Build (next build)
+        run: npx next build
+
+  # ─── Public Playwright e2e (anon paths only) ─────────────────────────
+  # The chromium project (landing + auth surface) doesn't need a Supabase
+  # session. Auth-gated specs (.auth.spec.ts) live behind the `setup`
+  # project that talks to Supabase admin — those run in a separate job
+  # gated on E2E_* secrets being present.
+  e2e-public:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ${{ github.workspace }}
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run public e2e
+        run: npx playwright test --project=chromium
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-public
+          path: apps/web/playwright-report
+          retention-days: 7
+
+  # ─── Auth-gated Playwright e2e (only if secrets are configured) ───────
+  e2e-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      AZURE_OPENAI_ENDPOINT: ${{ secrets.E2E_AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.E2E_AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_DEPLOYMENT: ${{ secrets.E2E_AZURE_OPENAI_DEPLOYMENT }}
+      E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+      E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      # Skip the whole job if the auth secrets aren't configured yet — keeps
+      # the workflow green for forks/contributors who don't have credentials.
+      - name: Skip when auth secrets are missing
+        if: ${{ env.NEXT_PUBLIC_SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        run: echo "Auth e2e secrets not configured — skipping." && exit 78
+
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ${{ github.workspace }}
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run auth-gated e2e
+        run: npx playwright test --project=setup --project=chromium-auth
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-auth
+          path: apps/web/playwright-report
+          retention-days: 7
+
+  # ─── Python scraper tests ────────────────────────────────────────────
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
     defaults:
       run:
         working-directory: apps/scraper
@@ -37,8 +167,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
-      - run: pip install pytest
+      - name: Install scraper dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest
+          # The scraper has a real requirements.txt; install only the test-time
+          # subset to keep CI fast (no playwright browsers needed for unit tests).
+          grep -vE "^playwright" requirements.txt | pip install -r /dev/stdin
 
       - name: Run scraper tests
         run: pytest -v

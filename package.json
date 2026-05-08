@@ -6,7 +6,10 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
-    "seed": "tsx scripts/seed.ts",
+    "seed": "node scripts/seed.mjs",
+    "ingest-real-projects": "node scripts/ingest-real-projects.mjs",
+    "recalculate-scores": "node scripts/recalculate-scores.mjs",
+    "generate-insights": "node scripts/generate-insights.mjs",
     "supabase": "supabase"
   },
   "devDependencies": {

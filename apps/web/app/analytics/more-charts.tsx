@@ -1,9 +1,10 @@
 'use client'
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, PieChart, Pie, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 
 interface Props {
-  devData: { name: string; score: number; onTime: number; complaints: number }[]
+  // We dropped onTime / complaints — no public source we can substantiate.
+  devData: { name: string; score: number }[]
   sellthroughData: { range: string; count: number }[]
   priceData: { range: string; count: number }[]
   handoverHealth: { onTrack: number; atRisk: number; delayed: number }
@@ -11,11 +12,14 @@ interface Props {
 
 const COLORS = ['#16a34a', '#22c55e', '#ca8a04', '#ea580c', '#dc2626']
 
-export function MoreCharts({ devData, sellthroughData, priceData, handoverHealth }: Props) {
+export function MoreCharts({ devData, sellthroughData, priceData, handoverHealth }: Readonly<Props>) {
+  // Buckets are derived from current_handover_date proximity vs today (we
+  // don't have original_handover_date for true delay tracking, so the
+  // taxonomy is timing-based rather than status-based).
   const healthData = [
-    { name: 'On Track', value: handoverHealth.onTrack, color: '#22c55e' },
-    { name: 'At Risk', value: handoverHealth.atRisk, color: '#f59e0b' },
-    { name: 'Delayed', value: handoverHealth.delayed, color: '#ef4444' },
+    { name: '12+ months out', value: handoverHealth.onTrack, color: '#22c55e' },
+    { name: 'Within 12 months', value: handoverHealth.atRisk, color: '#f59e0b' },
+    { name: 'Past handover date', value: handoverHealth.delayed, color: '#ef4444' },
   ].filter(d => d.value > 0)
 
   const total = healthData.reduce((s, d) => s + d.value, 0)
@@ -47,7 +51,7 @@ export function MoreCharts({ devData, sellthroughData, priceData, handoverHealth
             <YAxis tick={{ fontSize: 9, fill: '#999' }} axisLine={false} tickLine={false} width={25} allowDecimals={false} />
             <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #eee' }} />
             <Bar dataKey="count" name="Projects" radius={[4, 4, 0, 0]}>
-              {sellthroughData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
+              {sellthroughData.map((d, i) => <Cell key={d.range} fill={COLORS[i]} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -74,7 +78,7 @@ export function MoreCharts({ devData, sellthroughData, priceData, handoverHealth
           <ResponsiveContainer width={120} height={120}>
             <PieChart>
               <Pie data={healthData} dataKey="value" cx="50%" cy="50%" innerRadius={30} outerRadius={55} paddingAngle={3}>
-                {healthData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                {healthData.map(d => <Cell key={d.name} fill={d.color} />)}
               </Pie>
             </PieChart>
           </ResponsiveContainer>

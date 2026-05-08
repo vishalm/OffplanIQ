@@ -1,251 +1,236 @@
 """
 OffplanIQ — DLD Transaction Scraper
 ====================================
-Scrapes Dubai Land Department transaction search for off-plan sales.
-Runs nightly via Railway cron (or locally with: python scrapers/dld.py)
+Pulls real off-plan transactions from the Dubai Land Department open-data
+gateway and upserts them into Supabase `dld_transactions`.
 
-Data source: https://dubailand.gov.ae/en/eservices/real-estate-transaction-search/
-DLD publishes T+1 data (yesterday's transactions available today).
+Source:  POST https://gateway.dubailand.gov.ae/open-data/transactions
+Auth:    consumer-id header (public open-data consumer)
+Format:  Documented by /scripts/api/OpenDataApi.js + /scripts/publicData.js
+         on https://dubailand.gov.ae/en/open-data/real-estate-data/
 
-Output: upserts into Supabase dld_transactions table via REST API
+Notes:
+  - DLD `ACTUAL_AREA` is in square metres. Our schema stores square feet
+    (`actual_area_sqft`). Convert with sqm * 10.7639.
+  - `TRANSACTION_NUMBER` repeats across rows for portfolio transactions
+    (one mortgage spanning multiple parcels). We synthesise a unique
+    `dld_transaction_id` from `TRANSACTION_NUMBER + PARCEL_ID + area + value`.
+  - DLD covers Dubai only. Other emirates need their own sources.
 
 Usage:
-    python scrapers/dld.py --date 2025-04-06
-    python scrapers/dld.py --days 7   # backfill last 7 days
-    python scrapers/dld.py            # default: yesterday
+    python scrapers/dld.py                  # yesterday only
+    python scrapers/dld.py --days 7         # last 7 days
+    python scrapers/dld.py --date 2026-05-05
+    python scrapers/dld.py --offplan-only   # default true; pass --all to disable
+    python scrapers/dld.py --dry-run        # don't upsert
 """
 
 import os
 import sys
-import json
 import time
 import argparse
 import requests
-from datetime import date, datetime, timedelta
-from typing import Optional
+from datetime import date, timedelta
+from typing import Optional, Iterator
 from dataclasses import dataclass, asdict
-from playwright.sync_api import sync_playwright, Page, TimeoutError as PlaywrightTimeout
 
-# ─────────────────────────────────────────────
-# CONFIG
-# ─────────────────────────────────────────────
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
-DLD_BASE_URL = "https://dubailand.gov.ae/en/eservices/real-estate-transaction-search/"
-REQUEST_DELAY_S = 1.5   # polite delay between page requests
-MAX_RETRIES = 3
+# ─── Config ───
+DLD_API = "https://gateway.dubailand.gov.ae/open-data/transactions"
+DLD_CONSUMER_ID = "gkb3WvEG0rY9eilwXC0P2pTz8UzvLj9F"   # public open-data consumer
+DLD_PAGE_SIZE = 100
+REQUEST_DELAY_S = 1.5
+SQM_TO_SQFT = 10.7639
 
-HEADERS = {
+SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
+
+DLD_HEADERS = {
+    "Content-Type": "application/json; charset=utf-8",
+    "Accept": "application/json, */*",
+    "AppUser": "",
+    "consumer-id": DLD_CONSUMER_ID,
+    "Origin": "https://dubailand.gov.ae",
+    "Referer": "https://dubailand.gov.ae/en/open-data/real-estate-data/",
+}
+
+SUPABASE_HEADERS = {
     "apikey": SUPABASE_SERVICE_KEY,
     "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
     "Content-Type": "application/json",
-    "Prefer": "resolution=merge-duplicates",  # upsert
+    "Prefer": "resolution=merge-duplicates",
 }
 
-# ─────────────────────────────────────────────
-# DATA MODEL
-# ─────────────────────────────────────────────
+
 @dataclass
 class DldTransaction:
     dld_transaction_id: str
-    transaction_date: str          # ISO date YYYY-MM-DD
-    transaction_type: str
-    area_name: str
-    building_name: str
+    transaction_date: str
+    transaction_type: Optional[str]
+    property_type: Optional[str]
+    area_name: Optional[str]
+    building_name: Optional[str]
     unit_number: Optional[str]
     floor_number: Optional[int]
     actual_area_sqft: Optional[float]
-    transaction_value: int         # AED integer
-    psf: Optional[int]            # computed
+    transaction_value: int
+    psf: Optional[int]
     is_off_plan: bool
     source_url: str
 
-# ─────────────────────────────────────────────
-# SCRAPER
-# ─────────────────────────────────────────────
-class DldScraper:
-    def __init__(self):
-        self.session = requests.Session()
-        self.scraped = 0
-        self.inserted = 0
-        self.errors = 0
 
-    def scrape_date(self, target_date: date) -> list[DldTransaction]:
-        """
-        Scrapes all transactions for a given date.
-        DLD paginates results — we follow all pages.
-        """
-        transactions = []
+def _build_payload(target_date: date, skip: int, take: int, offplan_only: bool) -> dict:
+    """DLD wants string-encoded numbers and DD/MM/YYYY dates."""
+    return {
+        "P_FROM_DATE": target_date.strftime("%d/%m/%Y"),
+        "P_TO_DATE":   target_date.strftime("%d/%m/%Y"),
+        "P_GROUP_ID":      "",
+        "P_IS_OFFPLAN":    "1" if offplan_only else "",
+        "P_IS_FREE_HOLD":  "",
+        "P_AREA_ID":       "",
+        "P_USAGE_ID":      "",
+        "P_PROP_TYPE_ID":  "",
+        "P_TAKE":          str(take),
+        "P_SKIP":          str(skip),
+        "P_SORT":          "TRANSACTION_NUMBER_ASC",
+    }
 
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (compatible; OffplanIQ/1.0; +https://offplaniq.com/bot)"
-            )
-            page = context.new_page()
 
-            try:
-                page.goto(DLD_BASE_URL, wait_until="networkidle", timeout=30000)
-                self._set_date_filter(page, target_date)
-                self._apply_offplan_filter(page)
+def _row_to_transaction(row: dict) -> Optional[DldTransaction]:
+    """Map a DLD API row into our schema. Returns None if row is unusable."""
+    txn_number = row.get("TRANSACTION_NUMBER")
+    trans_value = row.get("TRANS_VALUE")
+    if not txn_number or not trans_value:
+        return None
 
-                page_num = 1
-                while True:
-                    rows = self._extract_page_rows(page, target_date)
-                    transactions.extend(rows)
-                    print(f"  Page {page_num}: {len(rows)} rows")
+    actual_area_sqm = row.get("ACTUAL_AREA") or 0
+    actual_area_sqft = round(actual_area_sqm * SQM_TO_SQFT, 2) if actual_area_sqm else None
+    psf = round(trans_value / actual_area_sqft) if actual_area_sqft else None
 
-                    if not self._has_next_page(page):
-                        break
+    instance_date = (row.get("INSTANCE_DATE") or "")[:10]   # 'YYYY-MM-DD'
+    if not instance_date:
+        return None
 
-                    self._click_next_page(page)
-                    page.wait_for_load_state("networkidle")
-                    time.sleep(REQUEST_DELAY_S)
-                    page_num += 1
+    parcel_id = row.get("PARCEL_ID") or 0
+    area_x100 = int((actual_area_sqm or 0) * 100)
+    synthetic_id = f"{txn_number}_{parcel_id}_{area_x100}_{trans_value}"
 
-            except PlaywrightTimeout:
-                print(f"  Timeout on {target_date} — partial data returned")
-            finally:
-                browser.close()
+    return DldTransaction(
+        dld_transaction_id=synthetic_id,
+        transaction_date=instance_date,
+        transaction_type=(row.get("GROUP_EN") or "").lower() or None,
+        property_type=row.get("PROP_TYPE_EN"),
+        area_name=row.get("AREA_EN"),
+        building_name=row.get("PROJECT_EN") or row.get("MASTER_PROJECT_EN"),
+        unit_number=None,
+        floor_number=None,
+        actual_area_sqft=actual_area_sqft,
+        transaction_value=int(trans_value),
+        psf=psf,
+        is_off_plan=row.get("IS_OFFPLAN") == 1,
+        source_url="https://dubailand.gov.ae/en/open-data/real-estate-data/#/transactions",
+    )
 
-        return transactions
 
-    def _set_date_filter(self, page: Page, target_date: date):
-        """Fill in the date range filter with the target date."""
-        date_str = target_date.strftime("%d/%m/%Y")
-        # TODO: Update selectors by inspecting DLD site in browser DevTools
-        # These are placeholder selectors — inspect the actual page to confirm
-        page.fill("#startDate", date_str)
-        page.fill("#endDate", date_str)
-        page.click("#searchBtn")
-        page.wait_for_load_state("networkidle")
+def _fetch_page(session: requests.Session, target_date: date, skip: int, offplan_only: bool) -> tuple[list[dict], int]:
+    """Fetch one page from the DLD API. Returns (rows, total). Empty list on any failure."""
+    payload = _build_payload(target_date, skip, DLD_PAGE_SIZE, offplan_only)
+    try:
+        resp = session.post(DLD_API, headers=DLD_HEADERS, json=payload, timeout=30)
+    except requests.RequestException as exc:
+        print(f"  Request failed at skip={skip}: {exc}")
+        return [], 0
 
-    def _apply_offplan_filter(self, page: Page):
-        """Filter to off-plan transactions only."""
-        # TODO: Inspect DLD filter dropdowns
-        # May need: page.select_option("#transactionType", "off-plan")
-        pass
+    if resp.status_code != 200:
+        print(f"  HTTP {resp.status_code} at skip={skip}: {resp.text[:200]}")
+        return [], 0
 
-    def _extract_page_rows(self, page: Page, target_date: date) -> list[DldTransaction]:
-        """
-        Extract transaction rows from the current page.
-        IMPORTANT: Inspect DLD table structure in DevTools → copy selectors here.
-        """
-        transactions = []
+    body = resp.json()
+    if body.get("responseCode") != 200:
+        errs = body.get("validationErrorsList") or []
+        msg = errs[0].get("errorMessage") if errs else body.get("responseCode")
+        print(f"  API error at skip={skip}: {msg}")
+        return [], 0
 
-        # TODO: Update selector to match actual DLD table
-        rows = page.query_selector_all("table.results-table tbody tr")
+    rows = (body.get("response") or {}).get("result") or []
+    total = rows[0].get("TOTAL", 0) if rows else 0
+    return rows, total
 
+
+def fetch_day(target_date: date, offplan_only: bool = True) -> Iterator[DldTransaction]:
+    """Yield all transactions for a given date, paginating through the API."""
+    session = requests.Session()
+    seen_ids: set[str] = set()
+    skip = 0
+    page_num = 0
+
+    while True:
+        page_num += 1
+        rows, total = _fetch_page(session, target_date, skip, offplan_only)
+        if not rows:
+            return
+
+        page_yield = 0
         for row in rows:
-            try:
-                cells = row.query_selector_all("td")
-                if len(cells) < 8:
-                    continue
+            txn = _row_to_transaction(row)
+            if txn and txn.dld_transaction_id not in seen_ids:
+                seen_ids.add(txn.dld_transaction_id)
+                page_yield += 1
+                yield txn
 
-                txn_id    = cells[0].inner_text().strip()
-                txn_type  = cells[1].inner_text().strip()
-                area      = cells[2].inner_text().strip()
-                building  = cells[3].inner_text().strip()
-                unit_no   = cells[4].inner_text().strip() or None
-                area_sqft = self._parse_float(cells[5].inner_text())
-                value_aed = self._parse_int(cells[6].inner_text())
-
-                psf = None
-                if area_sqft and area_sqft > 0 and value_aed:
-                    psf = round(value_aed / area_sqft)
-
-                txn = DldTransaction(
-                    dld_transaction_id=txn_id,
-                    transaction_date=target_date.isoformat(),
-                    transaction_type=txn_type,
-                    area_name=area,
-                    building_name=building,
-                    unit_number=unit_no,
-                    floor_number=None,
-                    actual_area_sqft=area_sqft,
-                    transaction_value=value_aed or 0,
-                    psf=psf,
-                    is_off_plan=True,
-                    source_url=DLD_BASE_URL,
-                )
-                transactions.append(txn)
-
-            except Exception as e:
-                print(f"  Row parse error: {e}")
-                self.errors += 1
-
-        return transactions
-
-    def _has_next_page(self, page: Page) -> bool:
-        next_btn = page.query_selector(".pagination .next:not(.disabled)")
-        return next_btn is not None
-
-    def _click_next_page(self, page: Page):
-        page.click(".pagination .next")
-
-    def _parse_float(self, text: str) -> Optional[float]:
-        try:
-            return float(text.replace(",", "").strip())
-        except (ValueError, AttributeError):
-            return None
-
-    def _parse_int(self, text: str) -> Optional[int]:
-        try:
-            return int(text.replace(",", "").strip())
-        except (ValueError, AttributeError):
-            return None
-
-    def upsert_to_supabase(self, transactions: list[DldTransaction]) -> int:
-        """Batch upsert transactions to Supabase."""
-        if not transactions:
-            return 0
-
-        batch_size = 100
-        inserted = 0
-
-        for i in range(0, len(transactions), batch_size):
-            batch = transactions[i:i + batch_size]
-            payload = [asdict(t) for t in batch]
-
-            resp = self.session.post(
-                f"{SUPABASE_URL}/rest/v1/dld_transactions",
-                headers=HEADERS,
-                json=payload,
-            )
-
-            if resp.status_code in (200, 201):
-                inserted += len(batch)
-            else:
-                print(f"  Supabase error {resp.status_code}: {resp.text[:200]}")
-                self.errors += len(batch)
-
-            time.sleep(0.2)  # rate limit courtesy
-
-        return inserted
-
-    def trigger_psf_update(self):
-        """
-        After inserting transactions, trigger the psf-updater Edge Function
-        to recompute current_psf and update psf_history for affected projects.
-        """
-        resp = self.session.post(
-            f"{SUPABASE_URL}/functions/v1/psf-updater",
-            headers=HEADERS,
-            json={"triggered_by": "dld_scraper"},
-        )
-        print(f"  psf-updater: {resp.status_code}")
+        print(f"  Page {page_num}: {page_yield} new (skip={skip}, total={total})")
+        skip += DLD_PAGE_SIZE
+        if skip >= total:
+            return
+        time.sleep(REQUEST_DELAY_S)
 
 
-# ─────────────────────────────────────────────
-# ENTRYPOINT
-# ─────────────────────────────────────────────
-def main():
+def upsert_to_supabase(transactions: list[DldTransaction]) -> tuple[int, int]:
+    """Upsert in batches. Returns (inserted, errors)."""
+    if not transactions:
+        return 0, 0
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        print("  SUPABASE_URL/KEY not set — skipping upsert")
+        return 0, 0
+
+    session = requests.Session()
+    inserted = 0
+    errors = 0
+    batch_size = 100
+    url = f"{SUPABASE_URL}/rest/v1/dld_transactions?on_conflict=dld_transaction_id"
+
+    for i in range(0, len(transactions), batch_size):
+        batch = transactions[i:i + batch_size]
+        payload = [asdict(t) for t in batch]
+        resp = session.post(url, headers=SUPABASE_HEADERS, json=payload, timeout=30)
+        if resp.status_code in (200, 201, 204):
+            inserted += len(batch)
+        else:
+            errors += len(batch)
+            print(f"  Supabase {resp.status_code}: {resp.text[:300]}")
+        time.sleep(0.2)
+
+    return inserted, errors
+
+
+def trigger_psf_updater(session: requests.Session) -> None:
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        return
+    resp = session.post(
+        f"{SUPABASE_URL}/functions/v1/psf-updater",
+        headers=SUPABASE_HEADERS,
+        json={"triggered_by": "dld_scraper"},
+        timeout=120,
+    )
+    print(f"  psf-updater: {resp.status_code}")
+
+
+def main() -> None:
     parser = argparse.ArgumentParser(description="OffplanIQ DLD Scraper")
     parser.add_argument("--date", type=str, help="Specific date YYYY-MM-DD")
-    parser.add_argument("--days", type=int, default=1, help="Number of days to backfill")
+    parser.add_argument("--days", type=int, default=1, help="Number of days to backfill (from yesterday)")
+    parser.add_argument("--all", action="store_true", help="Include non-off-plan transactions too")
+    parser.add_argument("--dry-run", action="store_true", help="Fetch but don't upsert")
     args = parser.parse_args()
-
-    scraper = DldScraper()
 
     if args.date:
         dates = [date.fromisoformat(args.date)]
@@ -253,22 +238,34 @@ def main():
         today = date.today()
         dates = [today - timedelta(days=i + 1) for i in range(args.days)]
 
-    print(f"OffplanIQ DLD Scraper — {len(dates)} date(s)")
+    print(f"OffplanIQ DLD Scraper — {len(dates)} date(s), offplan_only={not args.all}")
+
+    total_fetched = 0
+    total_inserted = 0
+    total_errors = 0
 
     for d in dates:
         print(f"\nScraping {d}...")
-        transactions = scraper.scrape_date(d)
-        print(f"  Found: {len(transactions)} transactions")
+        transactions = list(fetch_day(d, offplan_only=not args.all))
+        print(f"  Fetched: {len(transactions)} transactions")
+        total_fetched += len(transactions)
 
-        if transactions:
-            inserted = scraper.upsert_to_supabase(transactions)
-            print(f"  Inserted: {inserted}")
+        if args.dry_run:
+            for t in transactions[:5]:
+                print(f"    {t.transaction_date} {t.area_name} {t.building_name} {t.transaction_value:,} AED ({t.transaction_type})")
+            continue
 
-    if scraper.errors == 0:
-        scraper.trigger_psf_update()
+        inserted, errors = upsert_to_supabase(transactions)
+        total_inserted += inserted
+        total_errors += errors
+        print(f"  Inserted: {inserted}, errors: {errors}")
+        time.sleep(REQUEST_DELAY_S)
 
-    print(f"\nDone. Errors: {scraper.errors}")
-    sys.exit(0 if scraper.errors == 0 else 1)
+    if total_inserted > 0 and not args.dry_run:
+        trigger_psf_updater(requests.Session())
+
+    print(f"\nDone. Fetched: {total_fetched} · Inserted: {total_inserted} · Errors: {total_errors}")
+    sys.exit(0 if total_errors == 0 else 1)
 
 
 if __name__ == "__main__":

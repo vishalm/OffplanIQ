@@ -25,8 +25,8 @@ import subprocess
 import requests
 from datetime import date, timedelta
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
 
 HEADERS = {
     "apikey": SUPABASE_SERVICE_KEY,
@@ -58,15 +58,29 @@ def trigger_edge_fn(fn_name: str) -> bool:
     return resp.ok
 
 
-def main():
+def trigger_edge_step(label: str, fn_name: str, errors: list[str], short_label: str) -> None:
+    """Print a header, fire the edge function, and record any failure."""
+    print(f"\n{'='*50}")
+    print(f"STEP: {label}")
+    print(f"{'='*50}")
+    if not trigger_edge_fn(fn_name):
+        errors.append(short_label)
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="OffplanIQ nightly scraper")
     parser.add_argument("--skip-dld",    action="store_true")
     parser.add_argument("--skip-pf",     action="store_true")
     parser.add_argument("--skip-match",  action="store_true")
+    parser.add_argument("--skip-intel",  action="store_true", help="Skip LLM developer-intelligence step")
     parser.add_argument("--date",        type=str, help="Specific date YYYY-MM-DD for DLD backfill")
     parser.add_argument("--poll",        action="store_true", help="Run polling daemon (continuous)")
     parser.add_argument("--poll-interval", type=int, default=21600, help="Poll interval seconds (default 6h)")
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
 
     # Polling mode — delegates to polling daemon
     if args.poll:
@@ -74,7 +88,7 @@ def main():
         os.execvp("python", cmd)
 
     print(f"OffplanIQ Scraper — {date.today()}")
-    errors = []
+    errors: list[str] = []
 
     # Step 1: DLD
     if not args.skip_dld:
@@ -84,32 +98,27 @@ def main():
         if not run_step("DLD transaction scraper", cmd):
             errors.append("DLD")
 
-    # Step 2: Property Finder
-    if not args.skip_pf:
-        if not run_step("Property Finder scraper", ["python", "scrapers/property_finder.py"]):
-            errors.append("PropertyFinder")
+    # Step 2: Property Finder (--detail enriches each listing with PSF, total_units,
+    # floors, unit_types from the project's detail page; ~2s/project but worth it).
+    if not args.skip_pf and not run_step("Property Finder scraper", ["python", "scrapers/pf_scraper.py", "--detail"]):
+        errors.append("PropertyFinder")
+
+    # Step 2.5: LLM-powered developer intelligence (brochures + sites → projects + RAG)
+    if not args.skip_intel and not run_step("Developer intelligence (LLM)", ["python", "scrapers/developer_intelligence.py"]):
+        errors.append("DeveloperIntelligence")
 
     # Step 3: Transaction matcher
-    if not args.skip_match:
-        if not run_step("Transaction → project matcher", ["python", "jobs/match_transactions.py"]):
-            errors.append("Matcher")
+    if not args.skip_match and not run_step("Transaction → project matcher", ["python", "jobs/match_transactions.py"]):
+        errors.append("Matcher")
 
-    # Step 4: PSF updater edge function
-    print(f"\n{'='*50}")
-    print("STEP: Trigger PSF updater")
-    print(f"{'='*50}")
-    if not trigger_edge_fn("psf-updater"):
-        errors.append("PSFUpdater")
-
-    # Brief pause to let PSF update settle
+    # Step 4 + 5: edge functions
+    trigger_edge_step("Trigger PSF updater", "psf-updater", errors, "PSFUpdater")
     time.sleep(5)
+    trigger_edge_step("Trigger score recalculator", "score-recalculator", errors, "ScoreRecalculator")
 
-    # Step 5: Score recalculator edge function
-    print(f"\n{'='*50}")
-    print("STEP: Trigger score recalculator")
-    print(f"{'='*50}")
-    if not trigger_edge_fn("score-recalculator"):
-        errors.append("ScoreRecalculator")
+    # Step 6: launch radar — dispatches new-launch alerts based on project_updates
+    # rows the intelligence scraper just wrote. Soft-fail (missing edge fn → log only).
+    trigger_edge_step("Trigger launch radar", "launch-radar", errors, "LaunchRadar")
 
     # Summary
     print(f"\n{'='*50}")
@@ -117,9 +126,8 @@ def main():
     if errors:
         print(f"Errors in: {', '.join(errors)}")
         sys.exit(1)
-    else:
-        print("All steps completed successfully.")
-        sys.exit(0)
+    print("All steps completed successfully.")
+    sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { AnalyticsCharts } from './charts'
 import { TimelineDrilldown } from './timeline'
 import { MoreCharts } from './more-charts'
+import { emirateForArea, EMIRATES } from '@/lib/uae-geo'
 
 export default async function AnalyticsPage() {
   const supabase = createServerClient()
@@ -23,35 +24,46 @@ export default async function AnalyticsPage() {
   const devs = (developers ?? []) as any[]
 
   // ─── Compute all analytics server-side ───
+  // Only compute aggregates that can be substantiated from real data we
+  // actually ingest: project count, DLD-matched sales, score, current_psf.
+  // We deliberately don't surface Total Units / Est. Market Value because
+  // total_units is unsourced today (no RERA, no working DLD project endpoint).
   const totalProjects = all.length
-  const totalUnits = all.reduce((s, p) => s + (p.total_units || 0), 0)
   const totalSold = all.reduce((s, p) => s + (p.units_sold || 0), 0)
   const avgScore = totalProjects ? Math.round(all.reduce((s, p) => s + (p.score || 0), 0) / totalProjects) : 0
 
   const withPsf = all.filter(p => p.current_psf > 0)
   const avgPsf = withPsf.length ? Math.round(withPsf.reduce((s: number, p: any) => s + p.current_psf, 0) / withPsf.length) : 0
 
-  const totalValue = all.reduce((s, p) => s + ((p.min_price || 0) * (p.total_units || 0)), 0)
-
-  // City breakdown
-  const cityData: Record<string, { count: number; avgScore: number; avgPsf: number; totalUnits: number }> = {}
+  // ─── Per-emirate breakdown (all 7 emirates always rendered) ───
+  // Each emirate gets a tile even when count=0 so buyers can see geographic
+  // coverage at a glance — empty tiles say "No projects yet" rather than
+  // hiding the absence.
+  type EmirateAgg = {
+    count: number
+    avgScore: number
+    avgPsf: number
+    totalSold: number
+    psfSamples: number
+    scoreSamples: number
+  }
+  const cityData: Record<string, EmirateAgg> = {}
+  for (const e of EMIRATES) {
+    cityData[e] = { count: 0, avgScore: 0, avgPsf: 0, totalSold: 0, psfSamples: 0, scoreSamples: 0 }
+  }
   for (const p of all) {
-    const area = p.area || 'Unknown'
-    let city = 'Other'
-    if (['Business Bay','Downtown Dubai','Dubai Marina','Dubai Hills','Dubai Hills Estate','JVC','JLT','Creek Harbour','Dubai Creek Harbour (The Lagoons)','Dubai Harbour','Palm Jumeirah','Meydan','Arjan','Damac Hills','Sobha Hartland','Dubai South','Dubai South (Dubai World Central)','Expo City','Jumeirah Village Circle','Dubai Design District','Mina Rashid','The Valley','Nad Al Sheba','Bukadra','Dubai Land'].includes(area)) city = 'Dubai'
-    else if (['Saadiyat Island','Yas Island','Al Reem Island','Al Raha Beach','Ghantoot','Al Hudayriat Island','Al Maryah Island','Khalifa City'].includes(area)) city = 'Abu Dhabi'
-    else if (['Al Marjan Island','Ras Al Khaimah','Mina Al Arab','Al Hamra Village','RAK Central'].includes(area)) city = 'RAK'
-
-    if (!cityData[city]) cityData[city] = { count: 0, avgScore: 0, avgPsf: 0, totalUnits: 0 }
-    cityData[city].count++
-    cityData[city].avgScore += p.score || 0
-    cityData[city].avgPsf += p.current_psf || 0
-    cityData[city].totalUnits += p.total_units || 0
+    const city = emirateForArea(p.area || 'Unknown')
+    const bucket = cityData[city] || cityData['Other'] || (cityData[city] = { count: 0, avgScore: 0, avgPsf: 0, totalSold: 0, psfSamples: 0, scoreSamples: 0 })
+    bucket.count++
+    bucket.totalSold += p.units_sold || 0
+    if (p.score != null) { bucket.avgScore += p.score; bucket.scoreSamples++ }
+    if (p.current_psf)   { bucket.avgPsf  += p.current_psf; bucket.psfSamples++ }
   }
   for (const c of Object.values(cityData)) {
-    c.avgScore = Math.round(c.avgScore / c.count)
-    c.avgPsf = Math.round(c.avgPsf / c.count)
+    c.avgScore = c.scoreSamples ? Math.round(c.avgScore / c.scoreSamples) : 0
+    c.avgPsf   = c.psfSamples   ? Math.round(c.avgPsf   / c.psfSamples)   : 0
   }
+  const emirateRows = EMIRATES.map(name => ({ city: name, ...cityData[name] }))
 
   // Top areas by PSF
   const areaMap: Record<string, { psfSum: number; count: number; scoreSum: number }> = {}
@@ -67,15 +79,15 @@ export default async function AnalyticsPage() {
     .sort((a, b) => b.avgPsf - a.avgPsf)
     .slice(0, 12)
 
-  // Developer rankings
+  // Developer rankings — only fields we substantiate (curated tier score +
+  // real project count). on_time_delivery_pct and rera_complaints_count are
+  // intentionally omitted; we don't have a source we trust.
   const devRanking = devs
     .filter(d => d.developer_score != null)
     .map(d => ({
       name: d.name,
       slug: d.slug,
       score: d.developer_score,
-      onTime: d.on_time_delivery_pct,
-      complaints: d.rera_complaints_count,
       projects: d.active_projects + d.completed_projects,
     }))
     .sort((a, b) => b.score - a.score)
@@ -214,28 +226,107 @@ export default async function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Big numbers */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4 mb-8">
+        {/* Headline numbers — only metrics we can substantiate from real data.
+            We hid: Total Units (no inventory source), Est. Market Value
+            (depends on Total Units), absorption % (same divisor problem).
+            Each tile carries a `provenance` blurb that explains where the
+            number came from (rendered as both an info icon and a hover
+            tooltip — buyers will ask). */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
           {[
-            { label: 'Total Projects', value: totalProjects.toLocaleString(), color: 'text-gray-900' },
-            { label: 'Total Units', value: totalUnits.toLocaleString(), color: 'text-gray-900' },
-            { label: 'Units Sold', value: totalSold.toLocaleString(), sub: `${totalUnits ? Math.round((totalSold / totalUnits) * 100) : 0}% absorption`, color: 'text-blue-600' },
-            { label: 'Avg Score', value: `${avgScore}`, sub: '/100', color: avgScore >= 70 ? 'text-green-600' : 'text-amber-600' },
-            { label: 'Avg PSF', value: `AED ${avgPsf.toLocaleString()}`, color: 'text-gray-900' },
-            { label: 'Est. Market Value', value: `AED ${(totalValue / 1e9).toFixed(1)}B`, color: 'text-purple-600' },
+            {
+              label: 'Total Projects',
+              value: totalProjects.toLocaleString(),
+              color: 'text-gray-900',
+              provenance: 'Unique rows in the projects table. Sourced primarily from Property Finder /new-projects landing pages (per-emirate scrape via Playwright); enriched with developer metadata from the curated UAE master DB.',
+            },
+            {
+              label: 'DLD Sales Tracked',
+              value: totalSold.toLocaleString(),
+              color: 'text-blue-600',
+              provenance: 'Sum of units_sold across projects. units_sold per project = count of off-plan sale transactions in the dld_transactions table (transaction_type=\'sales\', is_off_plan=true) that the matcher linked to this project. Source: Dubai Land Department open-data API.',
+            },
+            {
+              label: 'Avg Score',
+              value: `${avgScore}`,
+              sub: '/100',
+              color: avgScore >= 70 ? 'text-green-600' : 'text-amber-600',
+              provenance: 'Mean of project.score across all projects. Each project score = 35×sellthrough + 20×psf-momentum + 30×developer-tier + 15×handover-proximity (max 100). Weights and buckets in supabase/functions/score-recalculator.',
+            },
+            {
+              label: 'Avg PSF',
+              value: `AED ${avgPsf.toLocaleString()}`,
+              color: 'text-gray-900',
+              provenance: 'Mean of project.current_psf across projects with a populated value. current_psf is rolling-180-day median PSF from DLD-matched transactions, computed by the psf-updater edge function.',
+            },
           ].map(m => (
-            <div key={m.label} className="card p-4">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{m.label}</p>
-              <p className={`text-2xl font-bold mt-1 tabular-nums ${m.color}`}>{m.value}{m.sub && <span className="text-sm font-normal text-gray-400">{m.sub}</span>}</p>
+            <div key={m.label} className="card p-4 group relative" title={m.provenance}>
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{m.label}</p>
+                <svg
+                  className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                  aria-label="How is this calculated?"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8h.01M11 12h1v4h1" />
+                </svg>
+              </div>
+              <p className={`text-2xl font-bold mt-1 tabular-nums ${m.color}`}>
+                {m.value}{m.sub && <span className="text-sm font-normal text-gray-400">{m.sub}</span>}
+              </p>
+              {/* On-hover popover — fixed-width, readable, never wraps oddly. */}
+              <div className="hidden group-hover:block absolute z-20 top-full left-0 mt-2 w-72 p-3 rounded-lg bg-gray-900 text-white text-[11px] leading-relaxed shadow-xl">
+                {m.provenance}
+              </div>
             </div>
           ))}
+        </div>
+
+        {/* All 7 Emirates — coverage tile per emirate. Empty tiles surface
+            "no projects yet" instead of being hidden, so buyers can see
+            geographic gaps explicitly. Coverage today is Dubai-heavy because
+            DLD's open-data gateway is Dubai-only; ADM/Sharjah RP/etc. tiles
+            stay light until we add an emirate-specific data source. */}
+        <div className="mb-8">
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">UAE Emirates Coverage</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            {emirateRows.map(e => {
+              const has = e.count > 0
+              return (
+                <a
+                  key={e.city}
+                  href={`/search?city=${encodeURIComponent(e.city)}`}
+                  className={`block rounded-xl border p-4 transition ${
+                    has
+                      ? 'bg-white border-gray-200 hover:border-blue-400 hover:shadow-sm'
+                      : 'bg-gray-50 border-dashed border-gray-200 hover:bg-white'
+                  }`}
+                >
+                  <p className="text-[11px] uppercase tracking-wider text-gray-400 truncate">{e.city}</p>
+                  <p className={`text-2xl font-bold tabular-nums mt-0.5 ${has ? 'text-gray-900' : 'text-gray-300'}`}>
+                    {e.count}
+                  </p>
+                  {has ? (
+                    <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
+                      {e.avgPsf > 0 && <p>Avg PSF: <span className="text-gray-900 font-medium">AED {e.avgPsf.toLocaleString()}</span></p>}
+                      {e.avgScore > 0 && <p>Avg score: <span className="text-gray-900 font-medium">{e.avgScore}</span></p>}
+                      {e.totalSold > 0 && <p>Sales tracked: <span className="text-gray-900 font-medium">{e.totalSold}</span></p>}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-gray-400">No projects yet</p>
+                  )}
+                </a>
+              )
+            })}
+          </div>
         </div>
 
         {/* Charts row */}
         <AnalyticsCharts
           scoreBuckets={scoreBuckets}
           psfByArea={psfByArea}
-          cityData={Object.entries(cityData).map(([city, d]) => ({ city, ...d }))}
+          cityData={emirateRows.filter(e => e.count > 0)}
         />
 
         {/* Developer + Top/Bottom */}
@@ -252,7 +343,7 @@ export default async function AnalyticsPage() {
                   }`}>{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium text-gray-900 truncate">{dev.name}</p>
-                    <p className="text-[11px] text-gray-400">{dev.projects} projects · {dev.onTime}% on-time</p>
+                    <p className="text-[11px] text-gray-400">{dev.projects} {dev.projects === 1 ? 'project' : 'projects'}</p>
                   </div>
                   <span className={`text-[13px] font-bold tabular-nums ${dev.score >= 85 ? 'text-green-600' : dev.score >= 70 ? 'text-emerald-600' : 'text-amber-600'}`}>
                     {dev.score}
@@ -329,14 +420,31 @@ export default async function AnalyticsPage() {
 
         {/* More visual charts */}
         <MoreCharts
-          devData={devRanking.slice(0, 8).map(d => ({ name: d.name.length > 12 ? d.name.slice(0, 10) + '..' : d.name, score: d.score, onTime: d.onTime || 0, complaints: d.complaints }))}
-          sellthroughData={[
-            { range: '90-100%', count: all.filter(p => p.sellthrough_pct >= 90).length },
-            { range: '70-89%', count: all.filter(p => p.sellthrough_pct >= 70 && p.sellthrough_pct < 90).length },
-            { range: '50-69%', count: all.filter(p => p.sellthrough_pct >= 50 && p.sellthrough_pct < 70).length },
-            { range: '30-49%', count: all.filter(p => p.sellthrough_pct >= 30 && p.sellthrough_pct < 50).length },
-            { range: '<30%', count: all.filter(p => p.sellthrough_pct < 30).length },
-          ]}
+          devData={devRanking.slice(0, 8).map(d => ({ name: d.name.length > 12 ? d.name.slice(0, 10) + '..' : d.name, score: d.score }))}
+          sellthroughData={(() => {
+            // Prefer real sellthrough_pct buckets when at least 5% of projects
+            // have a non-zero pct (i.e. total_units is populated). Otherwise
+            // fall back to DLD-matched units_sold count buckets — the chart
+            // still represents the same idea (sales velocity), grounded in
+            // real transactions instead of a divisor we don't always have.
+            const withPct = all.filter((p: any) => (p.sellthrough_pct || 0) > 0).length
+            if (withPct / Math.max(1, all.length) >= 0.05) {
+              return [
+                { range: '90-100%', count: all.filter((p: any) => p.sellthrough_pct >= 90).length },
+                { range: '70-89%',  count: all.filter((p: any) => p.sellthrough_pct >= 70 && p.sellthrough_pct < 90).length },
+                { range: '50-69%',  count: all.filter((p: any) => p.sellthrough_pct >= 50 && p.sellthrough_pct < 70).length },
+                { range: '30-49%',  count: all.filter((p: any) => p.sellthrough_pct >= 30 && p.sellthrough_pct < 50).length },
+                { range: '<30%',    count: all.filter((p: any) => p.sellthrough_pct < 30).length },
+              ]
+            }
+            return [
+              { range: '20+ sold',  count: all.filter((p: any) => (p.units_sold || 0) >= 20).length },
+              { range: '10-19',     count: all.filter((p: any) => (p.units_sold || 0) >= 10 && (p.units_sold || 0) < 20).length },
+              { range: '5-9',       count: all.filter((p: any) => (p.units_sold || 0) >= 5  && (p.units_sold || 0) < 10).length },
+              { range: '1-4',       count: all.filter((p: any) => (p.units_sold || 0) >= 1  && (p.units_sold || 0) < 5).length },
+              { range: 'No sales',  count: all.filter((p: any) => (p.units_sold || 0) === 0).length },
+            ]
+          })()}
           priceData={[
             { range: '<1M', count: all.filter(p => (p.min_price || 0) < 1000000).length },
             { range: '1-2M', count: all.filter(p => (p.min_price || 0) >= 1000000 && (p.min_price || 0) < 2000000).length },
@@ -344,11 +452,27 @@ export default async function AnalyticsPage() {
             { range: '5-10M', count: all.filter(p => (p.min_price || 0) >= 5000000 && (p.min_price || 0) < 10000000).length },
             { range: '10M+', count: all.filter(p => (p.min_price || 0) >= 10000000).length },
           ]}
-          handoverHealth={{
-            onTrack: all.filter(p => p.handover_status === 'on_track').length,
-            atRisk: all.filter(p => p.handover_status === 'at_risk').length,
-            delayed: all.filter(p => p.handover_status === 'delayed').length,
-          }}
+          handoverHealth={(() => {
+            // The scraper hard-defaults handover_status='on_track' (we have
+            // no original_handover_date to compute true delays from), so we
+            // re-derive the chart from current_handover_date proximity:
+            //   * date in the past               → 'past_due'
+            //   * within 12 months               → 'imminent'
+            //   * 12-36 months out               → 'mid'
+            //   * 36+ months                     → 'distant'
+            //   * date missing                   → 'unknown'
+            const now = Date.now()
+            const M = 1000 * 60 * 60 * 24 * 30
+            const counts = { onTrack: 0, atRisk: 0, delayed: 0 }   // map to existing chart
+            for (const p of all) {
+              if (!p.current_handover_date) continue
+              const monthsOut = (new Date(p.current_handover_date).getTime() - now) / M
+              if (monthsOut < 0)        counts.delayed++
+              else if (monthsOut <= 12) counts.atRisk++           // imminent → label "At Risk"
+              else                      counts.onTrack++
+            }
+            return counts
+          })()}
         />
 
         {/* Handover timeline drilldown */}

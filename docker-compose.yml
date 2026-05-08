@@ -3,11 +3,12 @@
 # No local Postgres needed — Supabase handles DB, Auth, Edge Functions
 #
 # Usage:
-#   docker compose up              # Start web app
-#   docker compose up -d           # Start in background
-#   docker compose --profile scraper up   # Include scraper
-#   docker compose --profile stripe up    # Include Stripe CLI
-#   docker compose down            # Stop everything
+#   docker compose up -d                  # web + poller (default)
+#   docker compose --profile scraper up   # add one-shot full pipeline run
+#   docker compose --profile stripe up    # add Stripe CLI webhook listener
+#   docker compose --profile all up -d    # full data pipeline: web + poller + scraper
+#                                          # (stripe-cli stays opt-in — needs STRIPE_SECRET_KEY)
+#   docker compose down                   # Stop everything
 #
 # Prerequisites:
 #   1. Fill in .env with your Supabase + Stripe keys
@@ -51,6 +52,7 @@ services:
       - ./apps/scraper:/app
     profiles:
       - scraper
+      - all
 
   # ─────────────────────────────────────────────
   # Polling Daemon — continuously scrapes PF every 6 hours

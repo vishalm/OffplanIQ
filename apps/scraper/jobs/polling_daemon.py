@@ -40,7 +40,21 @@ from playwright.sync_api import sync_playwright
 # ─── Config ───
 DEFAULT_INTERVAL_S = 6 * 3600  # 6 hours
 MAX_PROJECTS_PER_CITY = 50
-CITIES = os.environ.get("POLL_CITIES", "dubai,abu-dhabi,ras-al-khaimah").split(",")
+CITIES = os.environ.get(
+    "POLL_CITIES",
+    "dubai,abu-dhabi,sharjah,ajman,ras-al-khaimah,fujairah,umm-al-quwain",
+).split(",")
+
+# Slug → display name. Source of truth for emirate names written to projects.city.
+CITY_DISPLAY = {
+    "dubai":          "Dubai",
+    "abu-dhabi":      "Abu Dhabi",
+    "sharjah":        "Sharjah",
+    "ajman":          "Ajman",
+    "ras-al-khaimah": "Ras Al Khaimah",
+    "fujairah":       "Fujairah",
+    "umm-al-quwain":  "Umm Al Quwain",
+}
 
 # ─── Logging ───
 logging.basicConfig(
@@ -104,13 +118,29 @@ def run_poll_cycle():
                         projects.extend(new_projects)
 
                     projects = projects[:MAX_PROJECTS_PER_CITY]
-                    log.info(f"  Scraped {len(projects)} projects from {city}")
+                    # Authoritative emirate name comes from the URL we scraped,
+                    # not PF's alt-text (which often defaults to "Dubai").
+                    display_city = CITY_DISPLAY.get(city, city)
+                    for proj in projects:
+                        proj.city = display_city
+                    log.info(f"  Scraped {len(projects)} listing rows from {city}")
+
+                    # Visit each project's detail page to enrich with PSF, total_units,
+                    # floors, launch_date, unit_types. Failures per-project are tolerated
+                    # so one bad page doesn't blow up the whole cycle.
+                    enriched = 0
+                    for idx, proj in enumerate(projects, 1):
+                        try:
+                            scrape_project_detail(page, proj)
+                            page.wait_for_timeout(int(REQUEST_DELAY_S * 1000))
+                            if proj.current_psf or proj.total_units:
+                                enriched += 1
+                        except Exception as e:
+                            log.warning(f"  detail fail [{idx}/{len(projects)}] {proj.name}: {e}")
+                    log.info(f"  Enriched {enriched}/{len(projects)} with detail-page data")
                     total_projects += len(projects)
 
-                    # Push to Supabase
                     upsert_to_supabase(projects)
-
-                    # Respect rate limits between cities
                     time.sleep(REQUEST_DELAY_S * 2)
 
                 except Exception as e:

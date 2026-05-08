@@ -5,7 +5,8 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 interface Props {
   scoreBuckets: { label: string; count: number; color: string }[]
   psfByArea: { name: string; psf: number; score: number }[]
-  cityData: { city: string; count: number; avgScore: number; avgPsf: number; totalUnits: number }[]
+  // totalUnits intentionally optional — we don't always have an inventory source.
+  cityData: { city: string; count: number; avgScore: number; avgPsf: number; totalSold?: number; totalUnits?: number }[]
 }
 
 export function AnalyticsCharts({ scoreBuckets, psfByArea, cityData }: Props) {
@@ -67,9 +68,9 @@ export function AnalyticsCharts({ scoreBuckets, psfByArea, cityData }: Props) {
                     style={{ width: `${(c.count / maxCount) * 100}%` }} />
                 </div>
                 <div className="flex gap-4 mt-1 text-[10px] text-gray-400">
-                  <span>Score {c.avgScore}</span>
-                  <span>PSF AED {c.avgPsf.toLocaleString()}</span>
-                  <span>{c.totalUnits.toLocaleString()} units</span>
+                  {c.avgScore > 0 && <span>Score {c.avgScore}</span>}
+                  {c.avgPsf > 0   && <span>PSF AED {c.avgPsf.toLocaleString()}</span>}
+                  {(c.totalSold ?? 0) > 0 && <span>{c.totalSold!.toLocaleString()} sales</span>}
                 </div>
               </div>
             )

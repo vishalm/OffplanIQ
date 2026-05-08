@@ -22,15 +22,18 @@ serve(async (_req) => {
   const today     = new Date()
   const todayStr  = today.toISOString().split("T")[0]
   const day2Ago   = new Date(today); day2Ago.setDate(day2Ago.getDate() - 2)
-  const day30Ago  = new Date(today); day30Ago.setDate(day30Ago.getDate() - 30)
+  const day180Ago = new Date(today); day180Ago.setDate(day180Ago.getDate() - 180)
 
-  // 1. Find projects that got new DLD transactions in the last 2 days
+  // 1. Find projects whose DLD transactions were *scraped* in the last 2 days.
+  //    DLD records carry the actual transaction-execution date (which can lag
+  //    registration by weeks/months), so filtering by transaction_date misses
+  //    fresh data. scraped_at is the right freshness signal.
   const { data: recentTxns } = await supabase
     .from("dld_transactions")
     .select("project_id")
     .not("project_id", "is", null)
-    .gte("transaction_date", day2Ago.toISOString().split("T")[0])
-    .order("transaction_date", { ascending: false })
+    .gte("scraped_at", day2Ago.toISOString())
+    .order("scraped_at", { ascending: false })
 
   const projectIds = [...new Set((recentTxns ?? []).map(t => t.project_id as string))]
 
@@ -41,13 +44,14 @@ serve(async (_req) => {
   let updated = 0
 
   for (const projectId of projectIds) {
-    // 2. Compute 30-day avg PSF from DLD transactions
+    // 2. Compute rolling avg PSF from DLD transactions (180-day window —
+    //    accommodates DLD's registration lag).
     const { data: txns } = await supabase
       .from("dld_transactions")
       .select("psf, actual_area_sqft, transaction_value")
       .eq("project_id", projectId)
       .not("psf", "is", null)
-      .gte("transaction_date", day30Ago.toISOString().split("T")[0])
+      .gte("transaction_date", day180Ago.toISOString().split("T")[0])
 
     if (!txns?.length) continue
 

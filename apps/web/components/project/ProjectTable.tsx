@@ -13,9 +13,10 @@ type SortDir = 'asc' | 'desc'
 interface Props {
   projects: any[]
   tier: SubscriptionTier
+  hidePsfColumns?: boolean
 }
 
-const columns: { key: SortKey; label: string; defaultDir: SortDir }[] = [
+const allColumns: { key: SortKey; label: string; defaultDir: SortDir }[] = [
   { key: 'name', label: 'Project', defaultDir: 'asc' },
   { key: 'psf', label: 'PSF', defaultDir: 'desc' },
   { key: 'growth', label: 'Growth', defaultDir: 'desc' },
@@ -40,11 +41,19 @@ function getSortValue(p: any, key: SortKey): number | string {
   }
 }
 
-export function ProjectTable({ projects, tier }: Props) {
+export function ProjectTable({ projects, tier, hidePsfColumns }: Props) {
   const isFree = tier === 'free'
   const [sortKey, setSortKey] = useState<SortKey>('score')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [page, setPage] = useState(1)
+
+  const columns = useMemo<Array<{ key: SortKey; label: string; defaultDir: SortDir }>>(() => {
+    return hidePsfColumns ? [
+      { key: 'name', label: 'Project', defaultDir: 'asc' },
+      { key: 'handover', label: 'Handover', defaultDir: 'asc' },
+      { key: 'score', label: 'Score', defaultDir: 'desc' },
+    ] : allColumns
+  }, [hidePsfColumns])
 
   // Sort all projects in JS
   const sorted = useMemo(() => {
@@ -68,7 +77,8 @@ export function ProjectTable({ projects, tier }: Props) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     } else {
       setSortKey(key)
-      setSortDir(columns.find(c => c.key === key)?.defaultDir ?? 'desc')
+      const defaultDir = columns.find(c => c.key === key)?.defaultDir as SortDir ?? 'desc'
+      setSortDir(defaultDir)
     }
     setPage(1)
   }
@@ -85,7 +95,7 @@ export function ProjectTable({ projects, tier }: Props) {
     <div>
       <div className="rounded-2xl bg-white overflow-hidden" style={{ boxShadow: '0 0 0 0.5px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.04)' }}>
         {/* Desktop header */}
-        <div className="hidden sm:grid grid-cols-[2.5fr_90px_80px_80px_90px_60px] gap-3 px-5 py-3 border-b border-gray-100">
+        <div className={`hidden sm:grid gap-3 px-5 py-3 border-b border-gray-100 ${hidePsfColumns ? 'grid-cols-[2.5fr_90px_60px]' : 'grid-cols-[2.5fr_90px_80px_80px_90px_60px]'}`}>
           {columns.map(col => (
             <button key={col.key} onClick={() => handleSort(col.key)}
               className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-700 transition-colors flex items-center gap-1 text-left">
@@ -117,21 +127,27 @@ export function ProjectTable({ projects, tier }: Props) {
               className={`border-b border-gray-50 hover:bg-blue-50/30 transition-colors block ${isBlurred ? 'blur-sm pointer-events-none select-none' : ''}`}>
 
               {/* Desktop row */}
-              <div className="hidden sm:grid grid-cols-[2.5fr_90px_80px_80px_90px_60px] gap-3 items-center px-5 py-3">
+              <div className={`hidden sm:grid gap-3 items-center px-5 py-3 ${hidePsfColumns ? 'grid-cols-[2.5fr_90px_60px]' : 'grid-cols-[2.5fr_90px_80px_80px_90px_60px]'}`}>
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium text-gray-900 truncate">{project.name}</p>
                   <p className="text-[11px] text-gray-400 truncate mt-0.5">{project.developer?.name} · {project.area}</p>
                 </div>
-                <p className="text-[13px] font-medium text-gray-900 tabular-nums">{project.current_psf ? project.current_psf.toLocaleString() : '-'}</p>
-                <p className={`text-[13px] font-semibold tabular-nums ${growth === null ? 'text-gray-300' : growth > 0 ? 'text-green-600' : growth < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                  {growth === null ? '-' : `${growth > 0 ? '+' : ''}${growth}%`}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-medium text-gray-700 tabular-nums">{project.sellthrough_pct}%</span>
-                  <div className="flex-1 h-1 bg-gray-100 rounded-full max-w-[40px]">
-                    <div className="h-1 rounded-full bg-gray-400" style={{ width: `${Math.min(project.sellthrough_pct, 100)}%` }} />
+                {!hidePsfColumns && (
+                  <p className="text-[13px] font-medium text-gray-900 tabular-nums">{project.current_psf ? project.current_psf.toLocaleString() : '-'}</p>
+                )}
+                {!hidePsfColumns && (
+                  <p className={`text-[13px] font-semibold tabular-nums ${growth === null ? 'text-gray-300' : growth > 0 ? 'text-green-600' : growth < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                    {growth === null ? '-' : `${growth > 0 ? '+' : ''}${growth}%`}
+                  </p>
+                )}
+                {!hidePsfColumns && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-medium text-gray-700 tabular-nums">{project.sellthrough_pct}%</span>
+                    <div className="flex-1 h-1 bg-gray-100 rounded-full max-w-[40px]">
+                      <div className="h-1 rounded-full bg-gray-400" style={{ width: `${Math.min(project.sellthrough_pct, 100)}%` }} />
+                    </div>
                   </div>
-                </div>
+                )}
                 <div>
                   <p className="text-[12px] text-gray-500">{project.current_handover_date ? new Date(project.current_handover_date).toLocaleDateString('en-AE', { month: 'short', year: '2-digit' }) : '-'}</p>
                   {project.handover_delay_days > 0 && <p className="text-[10px] text-red-400 font-medium">+{Math.round(project.handover_delay_days / 30)}mo</p>}
@@ -149,11 +165,15 @@ export function ProjectTable({ projects, tier }: Props) {
                   <ScoreBadge score={project.score} size="sm" />
                 </div>
                 <div className="flex items-center gap-4 mt-2">
-                  <span className="text-[12px] text-gray-600">PSF {project.current_psf ? project.current_psf.toLocaleString() : '-'}</span>
-                  <span className={`text-[12px] font-semibold ${growth === null ? 'text-gray-300' : growth > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {growth === null ? '' : `${growth > 0 ? '+' : ''}${growth}%`}
-                  </span>
-                  <span className="text-[12px] text-gray-600">{project.sellthrough_pct}% sold</span>
+                  {!hidePsfColumns && (
+                    <>
+                      <span className="text-[12px] text-gray-600">PSF {project.current_psf ? project.current_psf.toLocaleString() : '-'}</span>
+                      <span className={`text-[12px] font-semibold ${growth === null ? 'text-gray-300' : growth > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        {growth === null ? '' : `${growth > 0 ? '+' : ''}${growth}%`}
+                      </span>
+                      <span className="text-[12px] text-gray-600">{project.sellthrough_pct}% sold</span>
+                    </>
+                  )}
                   {project.handover_delay_days > 0 && <span className="text-[11px] text-red-500 font-medium">Delayed</span>}
                 </div>
               </div>

@@ -22,8 +22,8 @@ import requests
 from dataclasses import dataclass
 from typing import Optional
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
 
 HEADERS = {
     "apikey": SUPABASE_SERVICE_KEY,
@@ -54,6 +54,25 @@ def fuzzy_match(building_name: str, project_name: str) -> float:
     return overlap / max(len(a), len(b))
 
 
+_DEV_STOPWORDS = {"by", "from", "the", "and", "of", "at", "in", "for"}
+_DEV_TAILS = (
+    "properties", "property", "real estate", "developments", "development",
+    "developers", "homes", "holding", "group", "ltd", "llc", "inc",
+)
+
+
+def project_core_name(name: str) -> str:
+    """Strip 'by <Developer Name>' tail and developer-org suffixes so two
+    differently-decorated names of the same project compare cleanly. e.g.
+    'Shahrukhz by Danube Properties' -> 'shahrukhz'.
+    """
+    n = normalize(name)
+    n = re.sub(r"\s+by\s+.*$", "", n)
+    for tail in _DEV_TAILS:
+        n = re.sub(rf"\b{tail}\b", "", n)
+    return re.sub(r"\s+", " ", n).strip()
+
+
 def fetch_unmatched_transactions(since: Optional[str] = None) -> list[dict]:
     params = "is.null"
     url = f"{SUPABASE_URL}/rest/v1/dld_transactions?project_id={params}&select=id,building_name,area_name&limit=1000"
@@ -70,36 +89,41 @@ def fetch_all_projects() -> list[dict]:
 
 
 def match_transaction(txn: dict, projects: list[dict]) -> Optional[str]:
-    """
-    Returns best-matching project_id or None.
-    """
-    txn_building = normalize(txn["building_name"])
-    txn_area     = normalize(txn["area_name"])
+    """Returns best-matching project_id or None.
 
-    best_score  = 0.0
-    best_id     = None
+    Strategy:
+      1. Compute a "core" name for both sides (strip 'by Developer' tail).
+      2. Score on core-name overlap; boost on substring containment.
+      3. Boost again when areas roughly overlap. We do NOT require area match
+         because DLD area_name is parcel-level (e.g. 'TECOM SITE A') while
+         PF area is community-level (e.g. 'Barsha Heights').
+    """
+    txn_core = project_core_name(txn["building_name"])
+    txn_area = normalize(txn["area_name"])
+    if not txn_core:
+        return None
+
+    best_score = 0.0
+    best_id: Optional[str] = None
 
     for project in projects:
-        proj_name = normalize(project["name"])
-        proj_area = normalize(project["area"])
-
-        # Area must roughly match (fast pre-filter)
-        area_words_match = any(w in txn_area for w in words(proj_area, min_len=4))
-        if not area_words_match:
+        proj_core = project_core_name(project["name"])
+        if not proj_core:
             continue
 
-        score = fuzzy_match(txn_building, proj_name)
+        score = fuzzy_match(txn_core, proj_core)
+        if proj_core in txn_core or txn_core in proj_core:
+            score = min(score + 0.4, 1.0)
 
-        # Boost for exact substring match
-        if proj_name in txn_building or txn_building in proj_name:
-            score = min(score + 0.3, 1.0)
+        proj_area = normalize(project["area"])
+        if proj_area and any(w in txn_area for w in words(proj_area, min_len=4)):
+            score = min(score + 0.1, 1.0)
 
         if score > best_score:
             best_score = score
-            best_id    = project["id"]
+            best_id = project["id"]
 
-    # Only accept high-confidence matches
-    return best_id if best_score >= 0.5 else None
+    return best_id if best_score >= 0.6 else None
 
 
 def update_project_id(txn_id: str, project_id: str) -> bool:

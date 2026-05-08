@@ -9,6 +9,8 @@ import { PaywallBanner } from '@/components/ui/PaywallBanner'
 import { InvestmentAnalysis } from '@/components/project/InvestmentAnalysis'
 import { InvestmentGauge } from '@/components/charts/InvestmentGauge'
 import { RiskRewardMatrix } from '@/components/charts/RiskRewardMatrix'
+import { ProjectNarrative } from '@/components/project/ProjectNarrative'
+import { disableUiComponentsDueToLackOfData } from '@/lib/featureFlags'
 
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
   const supabase = createServerClient()
@@ -38,6 +40,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
     .select('id, name, slug, area, score, current_psf, launch_psf, sellthrough_pct, handover_status, handover_delay_days, developer:developer_id(name)')
     .in('status', ['active', 'pre_launch']).order('score', { ascending: false })
 
+  const hidePsfComponents = disableUiComponentsDueToLackOfData
   const psfDelta = p.launch_psf && p.current_psf
     ? Math.round(((p.current_psf - p.launch_psf) / p.launch_psf) * 100) : null
 
@@ -79,51 +82,102 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
 
           {/* Tile 1: Price & Growth */}
-          <div className="card p-5">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Price</p>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-3xl font-bold text-gray-900 tabular-nums">AED {(p.current_psf ?? 0).toLocaleString()}</p>
-                <p className="text-xs text-gray-400 mt-0.5">per sqft</p>
+          {hidePsfComponents ? (
+            <div className="card p-5">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Price</p>
+              <div className="text-sm text-gray-500 leading-relaxed">
+                PSF and price growth metrics are temporarily hidden while we improve data coverage. This keeps the detail page accurate and avoids surfacing low-confidence estimates.
               </div>
-              {psfDelta !== null && (
-                <div className={`text-right ${psfDelta >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                  <p className="text-2xl font-bold tabular-nums">{psfDelta > 0 ? '+' : ''}{psfDelta}%</p>
-                  <p className="text-xs opacity-70">since launch</p>
+            </div>
+          ) : (
+            <div className="card p-5">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Price</p>
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-3xl font-bold text-gray-900 tabular-nums">AED {(p.current_psf ?? 0).toLocaleString()}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">per sqft</p>
                 </div>
-              )}
+                {psfDelta !== null && (
+                  <div className={`text-right ${psfDelta >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    <p className="text-2xl font-bold tabular-nums">{psfDelta > 0 ? '+' : ''}{psfDelta}%</p>
+                    <p className="text-xs opacity-70">since launch</p>
+                  </div>
+                )}
+              </div>
+              <div className="mt-4 h-px bg-gray-100" />
+              <div className="flex items-center gap-6 mt-3 text-xs text-gray-500">
+                <span>Launch: AED {(p.launch_psf ?? 0).toLocaleString()}/sqft</span>
+                <span>Min: {p.min_price ? `AED ${(p.min_price / 1000000).toFixed(1)}M` : '-'}</span>
+                <span>Max: {p.max_price ? `AED ${(p.max_price / 1000000).toFixed(1)}M` : '-'}</span>
+              </div>
             </div>
-            <div className="mt-4 h-px bg-gray-100" />
-            <div className="flex items-center gap-6 mt-3 text-xs text-gray-500">
-              <span>Launch: AED {(p.launch_psf ?? 0).toLocaleString()}/sqft</span>
-              <span>Min: {p.min_price ? `AED ${(p.min_price / 1000000).toFixed(1)}M` : '-'}</span>
-              <span>Max: {p.max_price ? `AED ${(p.max_price / 1000000).toFixed(1)}M` : '-'}</span>
-            </div>
-          </div>
+          )}
 
-          {/* Tile 2: Demand */}
-          <div className="card p-5">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Demand</p>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-3xl font-bold text-gray-900 tabular-nums">{p.sellthrough_pct}%</p>
-                <p className="text-xs text-gray-400 mt-0.5">sold</p>
+          {/* Tile 2: Demand — degrades gracefully when total_units unknown.
+              We have units_sold from real DLD-matched sales but often no
+              total_units denominator, so showing "30/0" or "0%" looks broken.
+              Surface the real number we have and label what's missing. */}
+          {(() => {
+            const hasTotal = (p.total_units || 0) > 0
+            const hasSold  = (p.units_sold  || 0) > 0
+            const pct = hasTotal ? Math.round((p.units_sold / p.total_units) * 100) : null
+            return (
+              <div className="card p-5">
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Demand</p>
+                {hasTotal ? (
+                  <>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-3xl font-bold text-gray-900 tabular-nums">{pct}%</p>
+                        <p className="text-xs text-gray-400 mt-0.5">sold</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-gray-700 tabular-nums">
+                          {p.units_sold}<span className="text-gray-400 font-normal">/{p.total_units}</span>
+                        </p>
+                        <p className="text-xs text-gray-400">units</p>
+                      </div>
+                    </div>
+                    {(() => {
+                      const safePct = pct ?? 0
+                      let barColor = 'bg-amber-500'
+                      if (safePct >= 80) barColor = 'bg-green-500'
+                      else if (safePct >= 50) barColor = 'bg-blue-500'
+                      return (
+                        <div className="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${barColor}`}
+                            style={{ width: `${Math.min(safePct, 100)}%` }} />
+                        </div>
+                      )
+                    })()}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-3xl font-bold text-gray-900 tabular-nums">{p.units_sold || 0}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">DLD-matched sales</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[12px] font-medium text-gray-500">Total units<br />unconfirmed</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-[11px] text-gray-400 leading-relaxed">
+                      {hasSold
+                        ? 'Total inventory size not yet ingested. Sales count is real (matched DLD off-plan transactions).'
+                        : 'No DLD-matched sales yet for this project.'}
+                    </div>
+                  </>
+                )}
+                <div className="flex items-center gap-6 mt-3 text-xs text-gray-500">
+                  {(p.resale_premium_pct ?? 0) !== 0 && (
+                    <span>Resale premium: {p.resale_premium_pct > 0 ? '+' : ''}{p.resale_premium_pct}%</span>
+                  )}
+                  {p.total_floors ? <span>{p.total_floors} floors</span> : null}
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-lg font-bold text-gray-700 tabular-nums">{p.units_sold}<span className="text-gray-400 font-normal">/{p.total_units}</span></p>
-                <p className="text-xs text-gray-400">units</p>
-              </div>
-            </div>
-            {/* Progress bar */}
-            <div className="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full ${p.sellthrough_pct >= 80 ? 'bg-green-500' : p.sellthrough_pct >= 50 ? 'bg-blue-500' : 'bg-amber-500'}`}
-                style={{ width: `${Math.min(p.sellthrough_pct, 100)}%` }} />
-            </div>
-            <div className="flex items-center gap-6 mt-3 text-xs text-gray-500">
-              <span>Resale premium: {p.resale_premium_pct > 0 ? '+' : ''}{p.resale_premium_pct}%</span>
-              {p.total_floors && <span>{p.total_floors} floors</span>}
-            </div>
-          </div>
+            )
+          })()}
 
           {/* Tile 3: Score Breakdown */}
           <div className="card p-5">
@@ -154,16 +208,33 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
           </div>
 
           {/* Tile 4: PSF Chart */}
-          <div className="card p-5">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">PSF History</p>
-            <PsfChart data={p.psf_history ?? []} />
-            <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-              <span>Handover: {p.current_handover_date ? new Date(p.current_handover_date).toLocaleDateString('en-AE', { month: 'short', year: 'numeric' }) : '-'}</span>
-              {p.handover_delay_days > 0 && <span className="text-red-500 font-medium">{Math.round(p.handover_delay_days / 30)}mo delayed</span>}
-              {p.handover_delay_days === 0 && <span className="text-green-600 font-medium">On schedule</span>}
+          {hidePsfComponents ? (
+            <div className="card p-5">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">PSF History</p>
+              <div className="text-sm text-gray-500 leading-relaxed">
+                PSF history is temporarily hidden while we continue to improve price data quality. We are still collecting the raw data in the background.
+              </div>
+              <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+                <span>Handover: {p.current_handover_date ? new Date(p.current_handover_date).toLocaleDateString('en-AE', { month: 'short', year: 'numeric' }) : '-'}</span>
+                {p.handover_delay_days > 0 && <span className="text-red-500 font-medium">{Math.round(p.handover_delay_days / 30)}mo delayed</span>}
+                {p.handover_delay_days === 0 && <span className="text-green-600 font-medium">On schedule</span>}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="card p-5">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">PSF History</p>
+              <PsfChart data={p.psf_history ?? []} />
+              <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+                <span>Handover: {p.current_handover_date ? new Date(p.current_handover_date).toLocaleDateString('en-AE', { month: 'short', year: 'numeric' }) : '-'}</span>
+                {p.handover_delay_days > 0 && <span className="text-red-500 font-medium">{Math.round(p.handover_delay_days / 30)}mo delayed</span>}
+                {p.handover_delay_days === 0 && <span className="text-green-600 font-medium">On schedule</span>}
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* AI-generated narrative — quiet empty state if not generated yet */}
+        <ProjectNarrative project={p} />
 
         {/* Investment Signals */}
         <InvestmentAnalysis project={p} allProjects={allProjects ?? []} />
