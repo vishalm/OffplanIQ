@@ -221,6 +221,10 @@
     51%, 100% { opacity: 0; }
   }
 
+  /* Hide scrollbar on horizontally-scrolling strips (landing trending feed). */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
   /* Soft radial glow behind hero — purely decorative */
   .ai-glow {
     background:

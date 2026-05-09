@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { createServerClient } from '@/lib/supabase/server'
+import { isAdminEmail } from '@/lib/admin/guard'
 import { MobileNav } from './MobileNav'
 import { NavUserMenu } from './NavUserMenu'
 
@@ -29,11 +30,16 @@ export async function Nav() {
 
   const unread = (alertCount as any)?.count ?? 0
 
-  const links = [
+  const links: Array<{ href: string; label: string; badge?: number }> = [
     { href: '/analytics', label: 'Analytics' },
     { href: '/search', label: 'Search' },
     { href: '/alerts', label: 'Alerts', badge: unread },
+    { href: '/insights', label: 'Insights' },
   ]
+  // Hidden from non-admins so the surface is invisible to regular users.
+  if (isAdminEmail(session.user.email)) {
+    links.push({ href: '/admin', label: 'Admin' })
+  }
 
   return (
     <header className="sticky top-0 z-50 glass" style={{ borderBottom: '0.5px solid rgba(0,0,0,0.08)' }}>

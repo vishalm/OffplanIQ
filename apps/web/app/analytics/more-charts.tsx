@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 
 interface Props {
-  // We dropped onTime / complaints — no public source we can substantiate.
-  devData: { name: string; score: number }[]
   sellthroughData: { range: string; count: number }[]
   priceData: { range: string; count: number }[]
   handoverHealth: { onTrack: number; atRisk: number; delayed: number }
@@ -13,7 +11,7 @@ interface Props {
 
 const COLORS = ['#16a34a', '#22c55e', '#ca8a04', '#ea580c', '#dc2626']
 
-export function MoreCharts({ devData, sellthroughData, priceData, handoverHealth }: Readonly<Props>) {
+export function MoreCharts({ sellthroughData, priceData, handoverHealth }: Readonly<Props>) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -32,21 +30,7 @@ export function MoreCharts({ devData, sellthroughData, priceData, handoverHealth
   const total = healthData.reduce((s, d) => s + d.value, 0)
 
   return (
-    <div className="grid gap-5 mb-6 lg:grid-cols-2">
-
-      {/* Developer scores bar */}
-      <div className="card p-5 bg-white shadow-sm">
-        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Developer Scores</p>
-        <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={devData} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 10, fill: '#999' }} axisLine={false} tickLine={false} domain={[0, 100]} />
-            <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#666' }} axisLine={false} tickLine={false} width={85} />
-            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #eee' }} />
-            <Bar dataKey="score" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={16} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+    <div className="grid gap-5 lg:grid-cols-3">
 
       {/* Sell-through distribution */}
       <div className="card p-5 bg-white shadow-sm">

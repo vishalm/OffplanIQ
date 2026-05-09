@@ -45,9 +45,8 @@ export default async function AlertsPage() {
 
   // Mark all as read (fire and forget)
   if (unreadCount > 0) {
-    supabase
-      .from('alerts_log')
-      .update({ is_read: true } as any)
+    ;(supabase.from('alerts_log') as any)
+      .update({ is_read: true })
       .eq('user_id', session.user.id)
       .eq('is_read', false)
       .then(() => {})

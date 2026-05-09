@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { ProjectTable } from '@/components/project/ProjectTable'
 import { FilterSidebar } from '@/components/project/FilterSidebar'
+import { SmartSearchBar } from '@/components/project/SmartSearchBar'
 import { redirect } from 'next/navigation'
 import { emirateForArea } from '@/lib/uae-geo'
 import { disableUiComponentsDueToLackOfData } from '@/lib/featureFlags'
@@ -152,6 +153,8 @@ export default async function DashboardPage({
             </a>
           )}
         </div>
+
+        <SmartSearchBar />
 
         <div className="flex flex-col lg:flex-row gap-6">
           <FilterSidebar

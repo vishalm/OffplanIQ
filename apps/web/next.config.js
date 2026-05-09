@@ -1,3 +1,8 @@
+// Load env from the monorepo root so we keep a single .env at the workspace root.
+// @next/env is bundled with Next.js — no extra dep.
+const path = require('path')
+require('@next/env').loadEnvConfig(path.resolve(__dirname, '../..'))
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
