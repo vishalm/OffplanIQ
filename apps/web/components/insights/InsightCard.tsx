@@ -5,6 +5,7 @@
 // Result / SQL / Plan. The Result tab picks a renderer based on chart_hint.
 
 import { useState } from 'react'
+import { Markdown } from '@/components/ai/Markdown'
 import { ResultTable } from './ResultTable'
 import { ResultChart } from './ResultChart'
 
@@ -59,7 +60,7 @@ export function InsightCard({ turn }: { turn: InsightTurn }) {
         <>
           {turn.summary && (
             <div className="px-5 py-4 bg-blue-50/40 border-b border-blue-100">
-              <p className="text-[13px] text-gray-800 leading-relaxed whitespace-pre-wrap">{turn.summary}</p>
+              <Markdown className="text-[13px]">{turn.summary}</Markdown>
               {turn.totals && (
                 <p className="text-[11px] text-gray-500 mt-2">
                   {turn.totals.rowCount.toLocaleString()} row{turn.totals.rowCount === 1 ? '' : 's'}

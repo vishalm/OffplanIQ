@@ -9,6 +9,7 @@
 // fired and what each returned.
 
 import { useEffect, useRef, useState } from 'react'
+import { Markdown } from '@/components/ai/Markdown'
 
 interface ProviderInfo {
   name:                 string
@@ -222,8 +223,10 @@ function TurnBubble({ turn }: { turn: Turn }) {
           {turn.error}
         </div>
       ) : (
-        <div className="max-w-[90%] px-3.5 py-2 rounded-2xl rounded-bl-md text-[13px] leading-relaxed bg-gray-100 text-gray-800 whitespace-pre-wrap">
-          {turn.content || '(no reply)'}
+        <div className="max-w-[90%] px-3.5 py-2 rounded-2xl rounded-bl-md bg-gray-100 text-gray-800">
+          {turn.content
+            ? <Markdown className="text-[13px]">{turn.content}</Markdown>
+            : <span className="text-[13px] text-gray-400">(no reply)</span>}
         </div>
       )}
       {turn.tools && turn.tools.length > 0 && (

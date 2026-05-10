@@ -12,7 +12,7 @@ import { azureChat, ChatMessage } from '@/lib/azure-openai'
 import { schemaForPrompt } from './schema'
 import { QueryPlan, QueryPlanSchema, validatePlanReferences } from './plan'
 
-const SYSTEM = `You are OffplanIQ Insights, a query planner for UAE off-plan property data.
+const SYSTEM = String.raw`You are OffplanIQ Insights, a query planner for UAE off-plan property data.
 
 Your job: convert a user question into a STRICT JSON QueryPlan that our executor can run safely. You never write raw SQL the database executes — you write a plan, and we render an SQL string for human display.
 
@@ -54,6 +54,21 @@ CRITICAL FIELD-PLACEMENT RULES (these are the most-broken parts):
     → set "select": []   (or omit the field entirely). The result columns will be developer.tier, active_projects, avg_sellthrough.
 - To sort by an aggregation, reference its ALIAS in order_by: { "column": "active_projects", "direction": "desc" }. Do NOT write order_by: "count(*)".
 - "joins" lists join NAMES, not column refs. Example: ["developer"], not ["developer.tier"].
+
+EXAMPLE for "pie chart of cities vs property count":
+{
+  "table": "projects",
+  "joins": [],
+  "select": [],
+  "filters": [{ "column": "city", "op": "is_not_null" }],
+  "group_by": ["city"],
+  "aggregations": [{ "fn": "count", "column": "*", "alias": "n" }],
+  "order_by": [{ "column": "n", "direction": "desc" }],
+  "limit": 50,
+  "chart_hint": "pie",
+  "sql": "SELECT city, COUNT(*) AS n FROM projects WHERE city IS NOT NULL GROUP BY city ORDER BY n DESC LIMIT 50",
+  "narrative": "Number of projects per emirate."
+}
 
 EXAMPLE for "active projects per developer tier with average sell-through":
 {
@@ -131,7 +146,8 @@ function parsePlan(raw: string): PlanningOutcome {
   }
   const refErrors = validatePlanReferences(parsed.data)
   if (refErrors.length > 0) {
-    return { raw, error: `Plan references unknown things:\n${refErrors.map(e => `- ${e.field}: ${e.message}`).join('\n')}` }
+    const issues = refErrors.map(e => `- ${e.field}: ${e.message}`).join('\n')
+    return { raw, error: `Plan references unknown things:\n${issues}` }
   }
   return { plan: parsed.data, raw }
 }
@@ -152,9 +168,12 @@ function parsePlan(raw: string): PlanningOutcome {
 
 type AggregationLite = { fn: string; column: string; alias: string }
 
-const AGG_RE   = /^(count|sum|avg|min|max)\s*\(\s*(\*|[a-z_][a-z0-9_.]*)\s*\)$/i
-const ALIAS_RE = /^([a-z_][a-z0-9_.]*)\s+as\s+([a-z_][a-z0-9_]*)$/i
-const COL_AS_RE = /^([a-z_][a-z0-9_.]*|\*)\s+as\s+([a-z_][a-z0-9_]*)$/i
+const AGG_RE     = /^(count|sum|avg|min|max)\s*\(\s*(\*|[a-z_][a-z0-9_.]*)\s*\)$/i
+const ALIAS_RE   = /^([a-z_][a-z0-9_.]*)\s+as\s+([a-z_][a-z0-9_]*)$/i
+const COL_AS_RE  = /^([a-z_][a-z0-9_.]*|\*)\s+as\s+([a-z_][a-z0-9_]*)$/i
+// Mirrors plan.ts ColumnRef. Used to gate pre-pass output so we never push
+// surface-junk through to Zod (where a single bad entry kills the plan).
+const COL_REF_RE = /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)?$/i
 
 function normaliseLooseShapes(input: unknown): unknown {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return input
@@ -169,6 +188,14 @@ function normaliseLooseShapes(input: unknown): unknown {
   const aliasMap = new Map<string, string>()
   if (Array.isArray(obj.select)) {
     obj.select = normaliseSelect(obj.select, obj.group_by, aggregations, aliasMap)
+  }
+
+  // group_by must be valid column refs. Drop anything that isn't — the LLM
+  // sometimes emits "city name" or "by city" here.
+  if (Array.isArray(obj.group_by)) {
+    obj.group_by = (obj.group_by as unknown[])
+      .filter((g): g is string => typeof g === 'string' && COL_REF_RE.test(g.trim()))
+      .map(g => g.trim())
   }
 
   if (aggregations.length > 0) obj.aggregations = aggregations
@@ -221,10 +248,18 @@ function normaliseSelect(
       continue
     }
 
-    cleaned.push(trimmed)
+    // Fail-soft: only keep entries that are real column refs. Drop labels,
+    // unparenthesised function names ("count"), or anything with spaces. A
+    // dropped junk entry is far better than rejecting the whole plan.
+    if (COL_REF_RE.test(trimmed)) cleaned.push(trimmed)
   }
+  // Drop entries that:
+  //   - duplicate a group_by column (already in the result by construction)
+  //   - match an aggregation alias (alias only exists post-aggregate; sending
+  //     it to PostgREST throws "column does not exist")
   const groupSet = new Set(Array.isArray(groupBy) ? (groupBy as string[]) : [])
-  return cleaned.filter(s => !groupSet.has(s))
+  const aliasSet = new Set(aggregations.map(a => a.alias))
+  return cleaned.filter(s => !groupSet.has(s) && !aliasSet.has(s))
 }
 
 
@@ -233,16 +268,26 @@ function normaliseOrderBy(
   aliasMap: Map<string, string>,
   aggregations: AggregationLite[],
 ): unknown[] {
-  return raw.map(o => {
-    if (!o || typeof o !== 'object' || typeof (o as any).column !== 'string') return o
+  const aliasNames = new Set(aggregations.map(a => a.alias))
+  const out: unknown[] = []
+  for (const o of raw) {
+    if (!o || typeof o !== 'object' || typeof (o as any).column !== 'string') continue
     const colTrimmed = (o as any).column.trim()
     const mapped = aliasMap.get(colTrimmed)
-    if (mapped) return { ...o, column: mapped }
+    if (mapped) { out.push({ ...o, column: mapped }); continue }
     const fn = AGG_RE.exec(colTrimmed)
-    if (!fn) return o
-    const alias = hoistAggregation(fn[1].toLowerCase(), fn[2], aggregations)
-    return { ...o, column: alias }
-  })
+    if (fn) {
+      const alias = hoistAggregation(fn[1].toLowerCase(), fn[2], aggregations)
+      out.push({ ...o, column: alias })
+      continue
+    }
+    // Drop entries whose column is junk (label, has spaces, etc.) — orderless
+    // is better than a 422.
+    if (aliasNames.has(colTrimmed) || COL_REF_RE.test(colTrimmed)) {
+      out.push({ ...o, column: colTrimmed })
+    }
+  }
+  return out
 }
 
 

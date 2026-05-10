@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ToolResultCard } from '@/components/ai/ToolResultCard'
+import { Markdown } from '@/components/ai/Markdown'
 
 type Source = { id?: string; title: string | null; url: string; doc_type: string; similarity: number }
 
@@ -208,8 +209,10 @@ function MessageBubble({ m }: { m: Message }) {
   }
   return (
     <div className="flex flex-col items-start">
-      <div className="max-w-[90%] px-4 py-2.5 rounded-2xl rounded-bl-md text-[14px] leading-relaxed bg-gray-100 text-gray-800 whitespace-pre-wrap">
-        {m.content || '(no reply)'}
+      <div className="max-w-[90%] px-4 py-2.5 rounded-2xl rounded-bl-md bg-gray-100 text-gray-800">
+        {m.content
+          ? <Markdown>{m.content}</Markdown>
+          : <span className="text-[14px] text-gray-400">(no reply)</span>}
       </div>
       {m.sources && m.sources.length > 0 && <SourcesList sources={m.sources} />}
     </div>

@@ -83,9 +83,14 @@ function buildSelectClause(plan: QueryPlan, table: { joins?: Array<{ name: strin
   // join.col into top-level keys for in-memory grouping.
   const baseCols = new Set<string>()
   const joinCols = new Map<string, Set<string>>()
+  // Aggregation aliases ("active_projects", "avg_sellthrough") look like bare
+  // column refs but only exist post-aggregation in JS. Never send them to
+  // PostgREST or the query crashes with "column ... does not exist".
+  const aggAliases = new Set(plan.aggregations.map(a => a.alias))
 
   const note = (ref: string) => {
-    if (ref === '*' || !ref) return
+    if (ref === '*' || !ref)        return
+    if (aggAliases.has(ref))        return    // alias, not a column
     if (ref.includes('.')) {
       const [j, c] = ref.split('.')
       if (!joinCols.has(j)) joinCols.set(j, new Set())
