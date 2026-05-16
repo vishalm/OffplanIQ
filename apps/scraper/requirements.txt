@@ -1,8 +1,8 @@
-playwright==1.41.0
-requests==2.31.0
-python-dotenv==1.0.0
-pypdf==4.3.1
-tiktoken==0.7.0
+playwright>=1.49.1
+requests>=2.31.0
+python-dotenv>=1.0.1
+pypdf>=4.3.1
+tiktoken>=0.7.0
 
 # LLM-first scraping. Optional (the scraper falls back to the legacy
 # Playwright + text-strip + llm_extract pipeline if scrapegraphai isn't

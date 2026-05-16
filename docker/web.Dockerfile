@@ -5,7 +5,7 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
 
 # Copy workspace config
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json .npmrc ./
 
 # Copy package.json files for dependency resolution
 COPY apps/web/package.json apps/web/
