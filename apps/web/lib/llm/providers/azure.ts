@@ -19,7 +19,10 @@ export async function azureChat(messages: LlmMessage[], opts: LlmChatOptions): P
     messages,
     max_completion_tokens: opts.max_tokens ?? 4000,
   }
-  if (opts.temperature != null)              body.temperature = opts.temperature
+  // Reasoning models (o1/o3/o4/gpt-5*) only accept the default temperature.
+  // Silently drop the caller's value so cross-provider callsites stay uniform.
+  const isReasoningModel = /^(o[134]|gpt-5)/i.test(c.chatModel)
+  if (opts.temperature != null && !isReasoningModel) body.temperature = opts.temperature
   if (opts.response_format === 'json_object') body.response_format = { type: 'json_object' }
   if (opts.tools && opts.tools.length > 0) {
     body.tools = opts.tools
